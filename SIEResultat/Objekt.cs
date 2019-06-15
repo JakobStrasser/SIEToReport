@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SIEResultat
+namespace EPPlusResultat
 {
-    public class Objekt : IEquatable<Objekt> , IComparer<Objekt>, IComparable<Objekt>
+    public class Objekt : IEquatable<Objekt>
     {
         private string typ;
         private string id;
@@ -25,7 +25,7 @@ namespace SIEResultat
             this.id = id;
             this.namn = namn;
         }
-        public int Compare(Objekt o1, Objekt o2)
+        public static int Compare(Objekt o1, Objekt o2)
         {
             if (o1.Typ.Equals(o2.Typ))
                 return o1.Id.CompareTo(o2.Id);
@@ -42,13 +42,24 @@ namespace SIEResultat
 
         }
 
-        public bool Equals(Objekt o)
+        public  bool Equals(Objekt o)
         {
             if (this.typ.Equals(o.Typ) & this.id.Equals(o.Id) & this.namn.Equals(o.Namn))
                 return true;
             else
                 return false;
         }
+
+        public override bool Equals(Object o)
+        {
+            Objekt localO = (Objekt)o;
+            if (this.typ.Equals(localO.Typ) & this.id.Equals(localO.Id) & this.namn.Equals(localO.Namn))
+                return true;
+            else
+                return false;
+        }
+
+
 
         public string Typ
         {

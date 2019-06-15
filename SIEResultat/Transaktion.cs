@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SIEResultat
+namespace EPPlusResultat
 {
     class Transaktion
     {
@@ -17,7 +17,7 @@ namespace SIEResultat
         private string sign;
 
 
-        public Dictionary<string, string> Objekt { get => objekt; set => objekt = value; }
+        public Dictionary<string, string> Objekt { get { if (objekt.Count == 0) objekt.Add("1", "Saknas"); return objekt; } set => objekt = value; }
         public DateTime Transaktionsdatum { get => transaktionsdatum; set => transaktionsdatum = value; }
         public string Kontonr { get => kontonr; set => kontonr = value; }
         public double Belopp { get => belopp; set => belopp = value; }

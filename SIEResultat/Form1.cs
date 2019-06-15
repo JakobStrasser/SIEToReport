@@ -10,11 +10,12 @@ using System.Windows.Forms;
 using System.IO;
 using System.Text.RegularExpressions;
 using Microsoft.Office.Interop;
-using Excel = Microsoft.Office.Interop.Excel;
+using OfficeOpenXml;
 
 
 
-namespace SIEResultat
+
+namespace EPPlusResultat
 {
     public partial class Form1 : Form
     { 
@@ -25,11 +26,13 @@ namespace SIEResultat
         private SortedDictionary<string, string> konton = new SortedDictionary<string, string>();
         private Dictionary<string, string> dimensioner = new Dictionary<string, string>();
         private List<Objekt> objekten = new List<Objekt>();
-        public List<string> valda = new List<string>();
+        private List<string> valda = new List<string>();
         private List<Transaktion> transaktioner = new List<Transaktion>();
         private string regexDelning = "([^\"]\\S*|\".+?\"|[^\\s*$])\\s*";
         private string fNamn = "";
-        Excel.Workbook wb;
+        private string selectedType = "";
+        
+        ExcelPackage wb;
 
 
         public Form1()
@@ -42,6 +45,11 @@ namespace SIEResultat
 
         }
 
+         ~Form1()
+        {
+            wb.Dispose();
+        }
+
         private void button1_Click(object sender, EventArgs e)
         {
             try
@@ -50,17 +58,17 @@ namespace SIEResultat
 
                 OpenFileDialog openFileDialog1 = new OpenFileDialog
                 {
-                    Filter = "SIE 4|*.SI",
+                    Filter = "SIE 4|*.SE",
                     Title = "Select a SIE File"
                 };
 
                 // Show the Dialog.  
                 // If the user clicked OK in the dialog and  
-                // a .CUR file was selected, open it.  
+                  
                 if (openFileDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
-                    // Assign the cursor in the Stream to the Form's Cursor property.  
-                    // REGEXP ("([^\"]\\S*|\".+?\")\\s*")   
+                    
+                  
 
                     byte[] indata = File.ReadAllBytes(openFileDialog1.FileName);
 
@@ -78,150 +86,74 @@ namespace SIEResultat
                     throw new Exception("Fel vid filinläsning");
                 }
                 // MessageBox.Show("Rader: " + list.Count);
-                button3.Enabled = true;
+                button6.Enabled = true;
                 this.Update();
+                openFileDialog1.Dispose();
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Fel: " + ex.Message + " \n" + ex.StackTrace);
             }
         }
-        private void SaveTransactions()
-        {
-
-            try { 
-
-            myApp = new Microsoft.Office.Interop.Excel.Application();
-            Excel.Workbook wb = myApp.Workbooks.Add();
-            Excel.Worksheet sheet;
-            sheet = wb.Sheets.Add(After: wb.Sheets[wb.Sheets.Count]);
-
-
-
-            sheet.Name = "Transaktioner";
-            sheet.Activate();
-            sheet.Cells[1, 1] = "Konto";
-            sheet.Cells[1, 2] = "Resultatenhet";
-            sheet.Cells[1, 3] = "Projekt";
-            sheet.Cells[1, 4] = "Belopp";
-            sheet.Cells[1, 5] = "Transaktionsdatum";
-            // sheet.Cells[1, 6] = "Månad";
-
-            sheet.Cells[1, 6] = "Transaktionstext";
-            int r = 2;
-            toolStripProgressBar1.Value = 1;
-            toolStripProgressBar1.Maximum = transaktioner.Count;
-
-            foreach (Transaktion t in transaktioner)
-            {
-                toolStripStatusLabel1.Text = "Skapar exceldokument rad: " + toolStripProgressBar1.Value + " av " + toolStripProgressBar1.Maximum;
-                toolStripProgressBar1.Increment(1);
-                sheet.Cells[r, 1] = t.Kontonr;
-                if (t.Objekt.ContainsKey("1"))
-                    sheet.Cells[r, 2] = "'" + t.Objekt["1"];
-                if (t.Objekt.ContainsKey("6"))
-                    sheet.Cells[r, 3] = "'" + t.Objekt["6"];
-                sheet.Cells[r, 4] = t.Belopp;
-                DateTime datum = t.Transaktionsdatum;
-                sheet.Cells[r, 5] = datum;
-                //sheet.Cells[r, 5] = t.Transaktionsdatum.Substring(0, 4) + "-" + t.Transaktionsdatum.Substring(4, 2);
-                sheet.Cells[r, 6] = t.Transtext;
-                r++;
-            }
-            r--;
-            Microsoft.Office.Interop.Excel.Range ran = sheet.Range["A2", "G" + r.ToString()];
-            ran.Sort(ran.Columns[5], Excel.XlSortOrder.xlAscending);
-            //sheet.Names.Add("Transaktioner", ran);
-
-            sheet = wb.Sheets.Add(After: wb.Sheets[wb.Sheets.Count]);
-            r = 2;
-            sheet.Name = "Konton";
-            sheet.Cells[1, 1] = "Konto";
-            sheet.Cells[1, 2] = "Kontobenämning";
-            foreach (var key in konton.Keys)
-            {
-                sheet.Cells[r, 1] = key.ToString();
-                sheet.Cells[r, 2] = konton[key];
-                r++;
-            }
-            r--;
-            Microsoft.Office.Interop.Excel.Range ran2 = sheet.Range["A2", "B" + r.ToString()];
-            ran2.Sort(ran2.Columns[1], Excel.XlSortOrder.xlAscending);
-            //sheet.Names.Add("Konton", ran);
-            sheet = wb.Sheets.Add(After: wb.Sheets[wb.Sheets.Count]);
-            r = 2;
-            sheet.Name = "Objekt";
-            sheet.Cells[1, 1] = "Typ";
-            sheet.Cells[1, 2] = "Objekt";
-            sheet.Cells[1, 3] = "Benämning";
-            objekten.Sort();
-            foreach (Objekt o in objekten)
-            {
-
-                sheet.Cells[r, 1] = o.Typ;
-                sheet.Cells[r, 2] = "'" + o.Id;
-                sheet.Cells[r, 3] = o.Namn;
-
-                r++;
-            }
-            SaveFileDialog sfd = new SaveFileDialog
-            {
-                Filter = "Excel | *.xlsx"
-            };
-            sfd.ShowDialog();
-            wb.SaveAs(sfd.FileName);
-            wb.Close();
-            myApp.Quit();
-            toolStripStatusLabel1.Text = "Excelfil sparad som " + sfd.FileName;
-        }
-            catch (Exception ex)
-            {
-                myApp.Quit();
-                MessageBox.Show(ex.Message + Environment.NewLine + ex.StackTrace);
-            }
-}
+        
         private void button2_Click(object sender, EventArgs e)
         {
 
             try
             {
-                myApp = new Microsoft.Office.Interop.Excel.Application();
+                // myApp = new Microsoft.Office.Interop.Excel.Application();
 
-                wb = myApp.Workbooks.Add();
-            
-               
-                objekten.Sort();
+                wb = new ExcelPackage();
                 
-              
-                foreach(Objekt o in objekten)
-                {
-                    if (valda.Contains(o.Id))
-                    {
-                        Total(wb, o);
-                      
-                        toolStripStatusLabel1.Text = "Skapar flik " + o.Id + " " + o.Namn;
-                    }
-                }
-                toolStripStatusLabel1.Text = "Skapar flik TOTAL";
-                Total(wb, null);
-               
-                wb.Sheets["Blad1"].Delete();
-                wb.Sheets["Blad2"].Delete();
-                wb.Sheets["Blad3"].Delete();
-               
 
-                SaveFileDialog sfd = new SaveFileDialog
+                objekten.Sort();
+                string valdTyp = comboBox2.SelectedItem.ToString();
+                foreach (string v in valda)
                 {
-                    Filter = "Excel | *.xlsx"
-                };
-                toolStripStatusLabel1.Text = "Excelfil sparad som " + sfd.FileName;
+                    foreach (Objekt o in objekten)
+                    {
+                        if (o.Id.Equals(v) && dimensioner[o.Typ].Equals(valdTyp))
+                        {
+                            if (checkBox1.Checked)
+                                YearlyTotal(wb, o);
+                            else Total(wb, o);
+                            Console.WriteLine("Skapar flik " + o.Id + " " + o.Namn);
+                            toolStripStatusLabel1.Text = "Skapar flik " + o.Id + " " + o.Namn;
+                        }
+
+                    }
+                   
+                    
+                }
+                Console.WriteLine("Antal flikar " + wb.Workbook.Worksheets.Count);
+                
+                 toolStripStatusLabel1.Text = "Skapar flik TOTAL";
+
+                 if (checkBox1.Checked)
+                             YearlyTotal(wb, null);
+                         else Total(wb,null);
+                 SkapaResultatsida(wb);
+                 wb.Workbook.Worksheets["TOTAL"].Select();
+                 wb.Workbook.Calculate();
+                 
+                 SaveFileDialog sfd = new SaveFileDialog
+                 {
+                     Filter = "Excel | *.xlsx"
+                 };
+                 toolStripStatusLabel1.Text = "Excelfil sparad som " + sfd.FileName;
+                
                 sfd.ShowDialog();
-                wb.SaveAs(sfd.FileName);
-                myApp.Quit();
+                
+                
+                using (var fileData = new FileStream(sfd.FileName, FileMode.Create))
+                {
+                    wb.SaveAs(fileData);
+                }
+                sfd.Dispose();
             }
             catch (Exception ex)
             {
-                myApp.Quit();
+               
                 MessageBox.Show(ex.Message + Environment.NewLine + ex.StackTrace);
             }
         }
@@ -255,8 +187,9 @@ namespace SIEResultat
             string verdatum = "";
             string vertext = "";
             List<string> monthList = new List<string>();
-            string tokenString = "";
+            string tokenString;
             toolStripProgressBar1.Value = 0;
+            objekten.Add(new Objekt("1", "Saknas", "Saknas"));
             try
             {
                 foreach (string currentRow in lista)
@@ -322,7 +255,7 @@ namespace SIEResultat
 
                                     }
                                     string obj_typ = rensaDim[1].Replace('"', ' ').Trim();
-                                    string obj_id = rensaDim[2].Replace('"', ' ').Trim();
+                                    string obj_id = rensaDim[2].Replace('"', ' ').Trim().ToUpper();
                                     string obj_namn = rensaDim[3].Replace('"', ' ').Trim();
                                     bool add = true;
                                     foreach (Objekt o in objekten)
@@ -344,14 +277,25 @@ namespace SIEResultat
                                     Dictionary<string, string> objekt = new Dictionary<string, string>();
                                     string brackets = Regex.Match(currentRow, "({.*})").ToString();
                                     brackets = brackets.Substring(1, brackets.Length - 2);
-
+                                    bool addedAtLeastOne = false;
                                     if (brackets.Length > 0)
                                     {
                                         dim = Regex.Split(brackets, regexDelning);
-                                        for (int i = 1; i < dim.Length - 3; i = i + 4)
+                                     
+                                        for (int i = 1; i < dim.Length - 3; i += 4)
                                         {
+                                            addedAtLeastOne = true;
+                                            objekt.Add(dim[i].Replace('"', ' ').Trim(), dim[i + 2].Replace('"', ' ').Trim().ToUpper());
+                                            
+                                        }
+                                        if (!addedAtLeastOne)
+                                        {
+                                            if (!objekt.ContainsKey("Saknas"))
+                                            {
+                                                objekt.Add("1", "Saknas");
+                                                
 
-                                            objekt.Add(dim[i].Replace('"', ' ').Trim(), dim[i + 2].Replace('"', ' ').Trim());
+                                            }
                                         }
                                     }
                                     string utanObjekt = currentRow.Substring(1, currentRow.IndexOf('{') - 1) + currentRow.Substring(currentRow.IndexOf('}') + 1);
@@ -372,13 +316,16 @@ namespace SIEResultat
                                     String kontonr = rensaDelar[1].Replace('"', ' ').Trim();
                                     string b = rensaDelar[2].Replace('.', ',').Replace('"', ' ').Trim();
                                     double belopp = -double.Parse(b);
+                                    
                                     string transtext = "";
+                                    if (rensaDelar.Count > 4)
+                                        transtext = rensaDelar[4];
                                     if (transtext.Equals(""))
                                         transtext = vertext;
                                     double kvantitet = 0.0;
                                     string sign = "";
                                     DateTime transaktionsdate = DateTime.Parse(transaktionsdatum.Substring(0, 4) + "-" + transaktionsdatum.Substring(4, 2) + "-" + transaktionsdatum.Substring(6, 2));
-                                    transaktioner.Add(new Transaktion(objekt, transaktionsdate, kontonr, belopp, transtext, kvantitet, sign));
+                                    transaktioner.Add(new Transaktion(objekt, transaktionsdate, kontonr, belopp/100, transtext, kvantitet, sign));
                                     break;
                                 }
                             case "#VER":
@@ -408,9 +355,16 @@ namespace SIEResultat
                     comboBox1.Items.Add(s);
                   
                 }
+               
+                foreach (string k in dimensioner.Keys)
+                {
+                    comboBox2.Items.Add(dimensioner[k]);
+                   
+                }
+                comboBox2.SelectedIndex = comboBox2.Items.IndexOf("Resultatenhet");
                 comboBox1.SelectedItem = comboBox1.Items[comboBox1.Items.Count - 1];
                 button4.Enabled = true;
-                SelectResultatenhet();
+                SelectResultatenhet(comboBox2.SelectedItem.ToString());
 
             }//try
             catch (Exception ex)
@@ -421,6 +375,25 @@ namespace SIEResultat
 
         } //button3_click
 
+        private void SelectResultatenhet(string typ)
+        {
+            checkedListBox1.Items.Clear();
+            string myKey = dimensioner.FirstOrDefault(x => x.Value.ToString().Equals(typ)).Key;
+            foreach (Objekt o in objekten)
+            {
+                if (o.Typ.Equals(myKey))
+                    checkedListBox1.Items.Add(o.Id);
+
+            }
+         
+
+            for (int i = 0; i < checkedListBox1.Items.Count; i++)
+            {
+                checkedListBox1.SetItemChecked(i, true);
+            }
+            selectedType = myKey;
+
+        }
         private void SelectResultatenhet()
         {
             foreach (Objekt o in objekten)
@@ -437,130 +410,150 @@ namespace SIEResultat
            
         }
 
-
-        private void Total(Excel.Workbook wb, Objekt o)
+     
+        private void YearlyTotal(ExcelPackage wb, Objekt o)
         {
             try
             {
-
+                char[] alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
                 string resenh;
                 if (o == null)
                     resenh = "*";
                 else
                     resenh = o.Id;
-                DateTime startMonth = DateTime.Parse(comboBox1.SelectedItem.ToString() + "-01");
-                DateTime endMonth = endOfMonth(DateTime.Parse(comboBox1.SelectedItem.ToString() + "-01"));
-                DateTime startYear = new DateTime(startMonth.Year, 5, 1);
-                DateTime startPreviousYear = new DateTime(startMonth.Year - 1, 5, 1);
-                DateTime endPreviousYear = new DateTime(startMonth.Year - 1, startMonth.AddYears(-1).Month, endOfMonth(startMonth.AddYears(-1)).Day);
-                DateTime startPrevMonth = startMonth.AddMonths(-1);
-                DateTime endPrevMonth = endOfMonth(startMonth.AddMonths(-1));
+                Console.WriteLine(resenh);
+                DateTime startMonth = DateTime.Parse("2018-05-01");
+                DateTime endMonth = endOfMonth(DateTime.Parse("2018-05-31"));
+                DateTime startYear = DateTime.Parse("2018-05-01");
+                DateTime endYear = DateTime.Parse("2019-04-30");
+                DateTime startPreviousYear = DateTime.Parse("2017-05-01");
+
+                DateTime endPreviousYear = DateTime.Parse("2018-04-30");
+                
+               
+
                 int intaktsRad;
                 int rorelseKostnadsRad;
                 int bruttoRad;
                 List<int> kostnadsRader = new List<int>();
-                
+
                 int kostnadsRad;
-               
 
 
-                Excel.Worksheet totalSheet = wb.Sheets.Add(After: wb.Sheets[wb.Sheets.Count]);
+                string newname = resenh;
+                ExcelWorksheet totalSheet; 
+
                 if (resenh.Contains("*"))
-                    totalSheet.Name = "TOTAL";
+                    totalSheet= wb.Workbook.Worksheets.Add("TOTAL");
                 else
-                    totalSheet.Name = resenh;
-                totalSheet.Cells[1, 2] = fNamn;
-                totalSheet.Cells[1, 3] = resenh;
-                if(o != null)
-                    totalSheet.Cells[1, 4] = o.Namn;
+                {
+                    foreach (ExcelWorksheet ws in wb.Workbook.Worksheets)
+                    {
+                        if (ws.Name.Equals(newname))
+                            newname += "_";
+                    }
+
+                    totalSheet = wb.Workbook.Worksheets.Add(newname);
+                }
+
+                totalSheet.Cells["B1"].Value = fNamn;
+                totalSheet.Cells["C1"].Value = resenh;
+                if (o != null)
+                    totalSheet.Cells["C1"].Value = o.Namn;
 
 
-                totalSheet.Cells[2, 1] = "Från:";
-                totalSheet.Cells[2, 2] = startMonth;
-                totalSheet.Cells[3, 1] = "Till:";
-                totalSheet.Cells[3, 2] = endMonth;
+                totalSheet.Cells["A2"].Value = "Från:";
+                totalSheet.Cells["B2"].Value = startMonth;
+                totalSheet.Cells["B2"].Style.Numberformat.Format = "yyyy-mm-dd";
+                totalSheet.Cells["A3"].Value = "Till:";
+                totalSheet.Cells["B3"].Value = endYear;
+                totalSheet.Cells["B3"].Style.Numberformat.Format = "yyyy-mm-dd";
 
                 //Skapa tabellerna
-                Dictionary<string, double> sumMonth = SumTransaktion(startMonth, endMonth, resenh);
-                Dictionary<string, double> sumLastMonth = SumTransaktion(startPrevMonth, endPrevMonth, resenh);
-                Dictionary<string, double> sumYTD = SumTransaktion(startYear, endMonth, resenh);
+
+                Dictionary<string, double>[] months = new Dictionary<string, double>[12];
+                for (int m = 0;m < 12;m++)
+                {
+                   // Console.WriteLine(m + ":" + startMonth.AddMonths(m).ToShortDateString() + " -- " + endMonth.AddMonths(m).ToShortDateString());
+                    months[m] = SumTransaktion(new DateTime(startMonth.AddMonths(m).Ticks), new DateTime(endMonth.AddMonths(m).Ticks), resenh);
+                }
+                
+                Dictionary<string, double> sumYTD = SumTransaktion(startYear, endYear, resenh);
                 Dictionary<string, double> sumLastYTD = SumTransaktion(startPreviousYear, endPreviousYear, resenh);
 
 
                 int row = 6;
-                totalSheet.Cells[5, 1] = "Konto";
-                totalSheet.Cells[5, 2] = "Benämning";
-                totalSheet.Cells[5, 3] = "Månadens resultat";
-                totalSheet.Cells[5, 4] = "Fg månads resultat";
-                totalSheet.Cells[5, 5] = "Differens";
-                totalSheet.Cells[5, 7] = "Ack resultat";
-                totalSheet.Cells[5, 8] = "Ack resultat fg år";
-                totalSheet.Cells[5, 9] = "Differens";
+                totalSheet.Cells["A5"].Value = "Konto";
+                totalSheet.Cells["B5"].Value = "Benämning";
+                for (int m = 0; m < 12; m++)
+                    totalSheet.Cells[alpha[m+3].ToString()+"5"].Value = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(startMonth.AddMonths(m).Month);
+                totalSheet.Cells["O5"].Value = "Ack resultat";
+                totalSheet.Cells["P5"].Value = "Ack resultat fg år";
+                totalSheet.Cells["Q5"].Value = "Differens";
 
                 row++;
-                totalSheet.Cells[row, 2] = "Intäkter";
+                totalSheet.Cells["B"+row].Value = "Intäkter";
                 row++;
                 //3000-3999
                 int startrow = row;
                 int[] sorteradeKonton = new int[konton.Count];
                 int i = 0;
-                foreach(string s in konton.Keys)
+                foreach (string s in konton.Keys)
                 {
                     sorteradeKonton[i] = Int32.Parse(s.Trim());
                     i++;
                 }
 
                 Array.Sort<int>(sorteradeKonton);
-            
+
                 foreach (int s in sorteradeKonton)
                 {
 
                     int konto = s;
                     if (konto >= 3000 && konto <= 3999)
                     {
-                        totalSheet.Cells[row, 1] = konto;
-                        totalSheet.Cells[row, 2] = konton[s.ToString()];
+                        totalSheet.Cells["A"+row].Value = konto;
+                        totalSheet.Cells["B"+row].Value = konton[s.ToString()];
+                        for (int m = 0; m < 12; m++)
+                        {
+                            if (months[m].ContainsKey(konto.ToString()))
+                                totalSheet.Cells[alpha[m+3].ToString()+row].Value = months[m][konto.ToString()];
+                            else
+                                totalSheet.Cells[alpha[m + 3].ToString() + row].Value = 0.0;
 
-                        if (sumMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 3] = sumMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 3] = 0.0;
-                        if (sumLastMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 4] = sumLastMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 4] = 0.0;
-                         if (sumMonth.ContainsKey(konto.ToString()) & sumLastMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 5] = sumMonth[konto.ToString()] - sumLastMonth[konto.ToString()];
-                         else
-                            totalSheet.Cells[row, 5] = 0.0;
-
+                          
+                        }
+                        
                         if (sumYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 7] = sumYTD[konto.ToString()];
+                            totalSheet.Cells["O" + row].Value = sumYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 7] = 0.0;
+                            totalSheet.Cells["O" + row].Value = 0.0;
                         if (sumLastYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 8] = sumLastYTD[konto.ToString()];
+                            totalSheet.Cells["P" + row].Value = sumLastYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 8] = 0.0;
+                            totalSheet.Cells["P" + row].Value = 0.0;
                         if (sumYTD.ContainsKey(konto.ToString()) & sumLastYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 9] = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
+                            totalSheet.Cells["Q" + row].Value = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 9] = 0.0;
+                            totalSheet.Cells["Q" + row].Value = 0.0;
                         row++;
                     }
                 }
-                String rangeStr = startrow + ":" + (row-1);
-                Excel.Range myRange = totalSheet.Rows[rangeStr] as Excel.Range;
-                myRange.Group();
+                
+                for(int r = startrow;r<= (row-1);r++)
+                {
+                    totalSheet.Row(r).OutlineLevel = 1;
+                    totalSheet.Row(r).Collapsed = true;
+                }
                 if (startrow == row)
                     row++;
-                totalSheet.Cells[row, 2] = "Summa intäkter";
-                totalSheet.Cells[row, 3] = "=SUM(C" + startrow + ":C" + (row - 1);
-                totalSheet.Cells[row, 4] = "=SUM(D" + startrow + ":D" + (row - 1);
-                totalSheet.Cells[row, 5] = "=SUM(E" + startrow + ":E" + (row - 1);
-                totalSheet.Cells[row, 7] = "=SUM(G" + startrow + ":G" + (row - 1);
-                totalSheet.Cells[row, 8] = "=SUM(H" + startrow + ":H" + (row - 1);
-                totalSheet.Cells[row, 9] = "=SUM(I" + startrow + ":I" + (row - 1);
+                totalSheet.Cells["B"+row].Value = "Summa intäkter";
+                for(int c = 3;c<18;c++)
+                {
+                    totalSheet.Cells[alpha[c-1]+""+row].Formula = "SUM(" + alpha[c-1] + startrow + ":" + alpha[c-1] + (row - 1)+")";
+
+                }
+                
                 intaktsRad = row;
 
 
@@ -569,7 +562,7 @@ namespace SIEResultat
                 row++;
 
                 //4000-4999 Rörelsens kostnader
-                totalSheet.Cells[row, 2] = "Rörelsens kostnader";
+                totalSheet.Cells["B"+row].Value = "Rörelsens kostnader";
                 row++;
                 startrow = row;
                 foreach (string s in konton.Keys)
@@ -578,66 +571,63 @@ namespace SIEResultat
                     int konto = Int32.Parse(s);
                     if (konto >= 4000 && konto <= 4999)
                     {
-                        totalSheet.Cells[row, 1] = konto;
-                        totalSheet.Cells[row, 2] = konton[s];
+                        totalSheet.Cells["A"+row].Value = konto;
+                        totalSheet.Cells["B"+row].Value = konton[s.ToString()];
+                        for (int m = 0; m < 12; m++)
+                        {
+                            if (months[m].ContainsKey(konto.ToString()))
+                                totalSheet.Cells[alpha[m+3]+""+row].Value = months[m][konto.ToString()];
+                            else
+                                totalSheet.Cells["C"+row].Value = 0.0;
 
-                        if (sumMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 3] = sumMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 3] = 0.0;
-                        if (sumLastMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 4] = sumLastMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 4] = 0.0;
-                        if (sumMonth.ContainsKey(konto.ToString()) & sumLastMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 5] = sumMonth[konto.ToString()] - sumLastMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 5] = 0.0;
+
+                        }
 
                         if (sumYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 7] = sumYTD[konto.ToString()];
+                            totalSheet.Cells["O" + row].Value = sumYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 7] = 0.0;
+                            totalSheet.Cells["O" + row].Value = 0.0;
                         if (sumLastYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 8] = sumLastYTD[konto.ToString()];
+                            totalSheet.Cells["P" + row].Value = sumLastYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 8] = 0.0;
+                            totalSheet.Cells["P" + row].Value = 0.0;
                         if (sumYTD.ContainsKey(konto.ToString()) & sumLastYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 9] = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
+                            totalSheet.Cells["Q" + row].Value = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 9] = 0.0;
+                            totalSheet.Cells["Q" + row].Value = 0.0;
                         row++;
                     }
                 }
-                rangeStr = startrow + ":" + (row -1);
-                myRange = totalSheet.Rows[rangeStr] as Excel.Range;
-                myRange.Group();
+                for (int r = startrow; r <= (row - 1); r++)
+                {
+                    totalSheet.Row(r).OutlineLevel = 1;
+                    totalSheet.Row(r).Collapsed = true;
+                }
                 if (startrow == row)
                     row++;
-                totalSheet.Cells[row, 2] = "Summa rörelsens kostnader";
-                totalSheet.Cells[row, 3] = "=SUM(C" + startrow + ":C" + (row - 1);
-                totalSheet.Cells[row, 4] = "=SUM(D" + startrow + ":D" + (row - 1);
-                totalSheet.Cells[row, 5] = "=SUM(E" + startrow + ":E" + (row - 1);
-                totalSheet.Cells[row, 7] = "=SUM(G" + startrow + ":G" + (row - 1);
-                totalSheet.Cells[row, 8] = "=SUM(H" + startrow + ":H" + (row - 1);
-                totalSheet.Cells[row, 9] = "=SUM(I" + startrow + ":I" + (row - 1);
+                totalSheet.Cells["B"+row].Value = "Summa rörelsens kostnader";
+                for (int c = 3; c < 18; c++)
+                {
+                    totalSheet.Cells[alpha[c - 1] +""+row].Formula = "SUM(" + alpha[c-1] + startrow + ":" + alpha[c-1] + (row - 1)+")";
+
+                }
                 rorelseKostnadsRad = row;
                 row++;
                 row++;
                 bruttoRad = row;
-                totalSheet.Cells[row, 2] = "Bruttovinst";
-                totalSheet.Cells[row, 3] = "=C" + intaktsRad + "+C" + rorelseKostnadsRad;
-                totalSheet.Cells[row, 4] = "=D" + intaktsRad + "+D" + rorelseKostnadsRad;
-                totalSheet.Cells[row, 5] = "=E" + intaktsRad + "+E" + rorelseKostnadsRad;
-                totalSheet.Cells[row, 7] = "=G" + intaktsRad + "+G" + rorelseKostnadsRad;
-                totalSheet.Cells[row, 8] = "=H" + intaktsRad + "+H" + rorelseKostnadsRad;
-                totalSheet.Cells[row, 9] = "=I" + intaktsRad + "+I" + rorelseKostnadsRad;
+                totalSheet.Cells["B"+row].Value = "Bruttovinst";
+                for (int c = 3; c < 18; c++)
+                {
+                    totalSheet.Cells[alpha[c - 1] +""+row].Formula = "SUM(" + alpha[c - 1] + intaktsRad + "+" + alpha[c - 1] + rorelseKostnadsRad + ")";
+
+                }
+                
                 row++;
                 row++;
 
 
                 //5000-6999 Externa kostnader
-                totalSheet.Cells[row, 2] = "Externa kostnader";
+                totalSheet.Cells["B"+row].Value = "Externa kostnader";
                 row++;
                 startrow = row;
                 foreach (string s in konton.Keys)
@@ -646,58 +636,54 @@ namespace SIEResultat
                     int konto = Int32.Parse(s);
                     if (konto >= 5000 && konto <= 6999)
                     {
-                        totalSheet.Cells[row, 1] = konto;
-                        totalSheet.Cells[row, 2] = konton[s];
+                        totalSheet.Cells["A" + row].Value = konto;
+                        totalSheet.Cells["B" + row].Value = konton[s.ToString()];
+                        for (int m = 0; m < 12; m++)
+                        {
+                            if (months[m].ContainsKey(konto.ToString()))
+                                totalSheet.Cells[alpha[m + 3] + "" + row].Value = months[m][konto.ToString()];
+                            else
+                                totalSheet.Cells["C" + row].Value = 0.0;
 
-                        if (sumMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 3] = sumMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 3] = 0.0;
-                        if (sumLastMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 4] = sumLastMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 4] = 0.0;
-                        if (sumMonth.ContainsKey(konto.ToString()) & sumLastMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 5] = sumMonth[konto.ToString()] - sumLastMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 5] = 0.0;
+
+                        }
 
                         if (sumYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 7] = sumYTD[konto.ToString()];
+                            totalSheet.Cells["O" + row].Value = sumYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 7] = 0.0;
+                            totalSheet.Cells["O" + row].Value = 0.0;
                         if (sumLastYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 8] = sumLastYTD[konto.ToString()];
+                            totalSheet.Cells["P" + row].Value = sumLastYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 8] = 0.0;
+                            totalSheet.Cells["P" + row].Value = 0.0;
                         if (sumYTD.ContainsKey(konto.ToString()) & sumLastYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 9] = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
+                            totalSheet.Cells["Q" + row].Value = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 9] = 0.0;
-
+                            totalSheet.Cells["Q" + row].Value = 0.0;
                         row++;
                     }
                 }
-                rangeStr = startrow + ":" + (row -1);
-                myRange = totalSheet.Rows[rangeStr] as Excel.Range;
-                myRange.Group();
+                for (int r = startrow; r <= (row - 1); r++)
+                {
+                    totalSheet.Row(r).OutlineLevel = 1;
+                    totalSheet.Row(r).Collapsed = true;
+                }
                 if (startrow == row)
                     row++;
                 kostnadsRader.Add(row);
-                totalSheet.Cells[row, 2] = "Summa externa kostnader";
-                totalSheet.Cells[row, 3] = "=SUM(C" + startrow + ":C" + (row - 1);
-                totalSheet.Cells[row, 4] = "=SUM(D" + startrow + ":D" + (row - 1);
-                totalSheet.Cells[row, 5] = "=SUM(E" + startrow + ":E" + (row - 1);
-                totalSheet.Cells[row, 7] = "=SUM(G" + startrow + ":G" + (row - 1);
-                totalSheet.Cells[row, 8] = "=SUM(H" + startrow + ":H" + (row - 1);
-                totalSheet.Cells[row, 9] = "=SUM(I" + startrow + ":I" + (row - 1);
+                totalSheet.Cells["B"+row].Value = "Summa externa kostnader";
+                for (int c = 3; c < 18; c++)
+                {
+                    totalSheet.Cells[alpha[c - 1] +""+row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
+
+                }
                 row++;
-                
+
                 row++;
 
 
                 //7000-7799 Personalkostnader
-                totalSheet.Cells[row, 2] = "Personalkostnader";
+                totalSheet.Cells["B"+row].Value = "Personalkostnader";
                 row++;
                 startrow = row;
                 foreach (string s in konton.Keys)
@@ -706,56 +692,53 @@ namespace SIEResultat
                     int konto = Int32.Parse(s);
                     if (konto >= 7000 && konto <= 7799)
                     {
-                        totalSheet.Cells[row, 1] = konto;
-                        totalSheet.Cells[row, 2] = konton[s];
+                        totalSheet.Cells["A" + row].Value = konto;
+                        totalSheet.Cells["B" + row].Value = konton[s.ToString()];
+                        for (int m = 0; m < 12; m++)
+                        {
+                            if (months[m].ContainsKey(konto.ToString()))
+                                totalSheet.Cells[alpha[m + 3] + "" + row].Value = months[m][konto.ToString()];
+                            else
+                                totalSheet.Cells["C" + row].Value = 0.0;
 
-                        if (sumMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 3] = sumMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 3] = 0.0;
-                        if (sumLastMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 4] = sumLastMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 4] = 0.0;
-                        if (sumMonth.ContainsKey(konto.ToString()) & sumLastMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 5] = sumMonth[konto.ToString()] - sumLastMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 5] = 0.0;
+
+                        }
 
                         if (sumYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 7] = sumYTD[konto.ToString()];
+                            totalSheet.Cells["O" + row].Value = sumYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 7] = 0.0;
+                            totalSheet.Cells["O" + row].Value = 0.0;
                         if (sumLastYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 8] = sumLastYTD[konto.ToString()];
+                            totalSheet.Cells["P" + row].Value = sumLastYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 8] = 0.0;
+                            totalSheet.Cells["P" + row].Value = 0.0;
                         if (sumYTD.ContainsKey(konto.ToString()) & sumLastYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 9] = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
+                            totalSheet.Cells["Q" + row].Value = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 9] = 0.0;
+                            totalSheet.Cells["Q" + row].Value = 0.0;
                         row++;
                     }
                 }
-                rangeStr = startrow + ":" + (row -1);
-                myRange = totalSheet.Rows[rangeStr] as Excel.Range;
-                myRange.Group();
+                for (int r = startrow; r <= (row - 1); r++)
+                {
+                    totalSheet.Row(r).OutlineLevel = 1;
+                    totalSheet.Row(r).Collapsed = true;
+                }
                 if (startrow == row)
                     row++;
                 kostnadsRader.Add(row);
-                totalSheet.Cells[row, 2] = "Summa personalkostnader";
-                totalSheet.Cells[row, 3] = "=SUM(C" + startrow + ":C" + (row - 1);
-                totalSheet.Cells[row, 4] = "=SUM(D" + startrow + ":D" + (row - 1);
-                totalSheet.Cells[row, 5] = "=SUM(E" + startrow + ":E" + (row - 1);
-                totalSheet.Cells[row, 7] = "=SUM(G" + startrow + ":G" + (row - 1);
-                totalSheet.Cells[row, 8] = "=SUM(H" + startrow + ":H" + (row - 1);
-                totalSheet.Cells[row, 9] = "=SUM(I" + startrow + ":I" + (row - 1);
+                totalSheet.Cells["B"+row].Value = "Summa personalkostnader";
+                for (int c = 3; c < 18; c++)
+                {
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
+
+                }
                 row++;
-               
+
                 row++;
 
                 //7800-7999 Avskrivningar
-                totalSheet.Cells[row, 2] = "Avskrivningar";
+                totalSheet.Cells["B"+row].Value = "Avskrivningar";
                 row++;
                 startrow = row;
                 foreach (string s in konton.Keys)
@@ -764,56 +747,53 @@ namespace SIEResultat
                     int konto = Int32.Parse(s);
                     if (konto >= 7800 && konto <= 7999)
                     {
-                        totalSheet.Cells[row, 1] = konto;
-                        totalSheet.Cells[row, 2] = konton[s];
+                        totalSheet.Cells["A" + row].Value = konto;
+                        totalSheet.Cells["B" + row].Value = konton[s.ToString()];
+                        for (int m = 0; m < 12; m++)
+                        {
+                            if (months[m].ContainsKey(konto.ToString()))
+                                totalSheet.Cells[alpha[m + 3] + "" + row].Value = months[m][konto.ToString()];
+                            else
+                                totalSheet.Cells["C" + row].Value = 0.0;
 
-                        if (sumMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 3] = sumMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 3] = 0.0;
-                        if (sumLastMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 4] = sumLastMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 4] = 0.0;
-                        if (sumMonth.ContainsKey(konto.ToString()) & sumLastMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 5] = sumMonth[konto.ToString()] - sumLastMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 5] = 0.0;
+
+                        }
 
                         if (sumYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 7] = sumYTD[konto.ToString()];
+                            totalSheet.Cells["O" + row].Value = sumYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 7] = 0.0;
+                            totalSheet.Cells["O" + row].Value = 0.0;
                         if (sumLastYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 8] = sumLastYTD[konto.ToString()];
+                            totalSheet.Cells["P" + row].Value = sumLastYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 8] = 0.0;
+                            totalSheet.Cells["P" + row].Value = 0.0;
                         if (sumYTD.ContainsKey(konto.ToString()) & sumLastYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 9] = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
+                            totalSheet.Cells["Q" + row].Value = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 9] = 0.0;
+                            totalSheet.Cells["Q" + row].Value = 0.0;
                         row++;
                     }
                 }
-                rangeStr = startrow + ":" + (row -1);
-                myRange = totalSheet.Rows[rangeStr] as Excel.Range;
-                myRange.Group();
+                for (int r = startrow; r <= (row - 1); r++)
+                {
+                    totalSheet.Row(r).OutlineLevel = 1;
+                    totalSheet.Row(r).Collapsed = true;
+                }
                 if (startrow == row)
                     row++;
                 kostnadsRader.Add(row);
-                totalSheet.Cells[row, 2] = "Summa avskrivningar";
-                totalSheet.Cells[row, 3] = "=SUM(C" + startrow + ":C" + (row - 1);
-                totalSheet.Cells[row, 4] = "=SUM(D" + startrow + ":D" + (row - 1);
-                totalSheet.Cells[row, 5] = "=SUM(E" + startrow + ":E" + (row - 1);
-                totalSheet.Cells[row, 7] = "=SUM(G" + startrow + ":G" + (row - 1);
-                totalSheet.Cells[row, 8] = "=SUM(H" + startrow + ":H" + (row - 1);
-                totalSheet.Cells[row, 9] = "=SUM(I" + startrow + ":I" + (row - 1);
+                totalSheet.Cells["B"+row].Value = "Summa avskrivningar";
+                for (int c = 3; c < 18; c++)
+                {
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
+
+                }
                 row++;
-               
+
                 row++;
 
                 //8000-8799 Finansiella kostnader
-                totalSheet.Cells[row, 2] = "Finansiella kostnader";
+                totalSheet.Cells["B"+row].Value = "Finansiella kostnader";
                 row++;
                 startrow = row;
                 foreach (string s in konton.Keys)
@@ -822,56 +802,53 @@ namespace SIEResultat
                     int konto = Int32.Parse(s);
                     if (konto >= 8000 && konto <= 8799)
                     {
-                        totalSheet.Cells[row, 1] = konto;
-                        totalSheet.Cells[row, 2] = konton[s];
+                        totalSheet.Cells["A" + row].Value = konto;
+                        totalSheet.Cells["B" + row].Value = konton[s.ToString()];
+                        for (int m = 0; m < 12; m++)
+                        {
+                            if (months[m].ContainsKey(konto.ToString()))
+                                totalSheet.Cells[alpha[m + 3] + "" + row].Value = months[m][konto.ToString()];
+                            else
+                                totalSheet.Cells["C" + row].Value = 0.0;
 
-                        if (sumMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 3] = sumMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 3] = 0.0;
-                        if (sumLastMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 4] = sumLastMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 4] = 0.0;
-                        if (sumMonth.ContainsKey(konto.ToString()) & sumLastMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 5] = sumMonth[konto.ToString()] - sumLastMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 5] = 0.0;
+
+                        }
 
                         if (sumYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 7] = sumYTD[konto.ToString()];
+                            totalSheet.Cells["O" + row].Value = sumYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 7] = 0.0;
+                            totalSheet.Cells["O" + row].Value = 0.0;
                         if (sumLastYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 8] = sumLastYTD[konto.ToString()];
+                            totalSheet.Cells["P" + row].Value = sumLastYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 8] = 0.0;
+                            totalSheet.Cells["P" + row].Value = 0.0;
                         if (sumYTD.ContainsKey(konto.ToString()) & sumLastYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 9] = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
+                            totalSheet.Cells["Q" + row].Value = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 9] = 0.0;
+                            totalSheet.Cells["Q" + row].Value = 0.0;
                         row++;
                     }
                 }
-                rangeStr = startrow + ":" + (row -1);
-                myRange = totalSheet.Rows[rangeStr] as Excel.Range;
-                myRange.Group();
+                for (int r = startrow; r <= (row - 1); r++)
+                {
+                    totalSheet.Row(r).OutlineLevel = 1;
+                    totalSheet.Row(r).Collapsed = true;
+                }
                 if (startrow == row)
                     row++;
                 kostnadsRader.Add(row);
-                totalSheet.Cells[row, 2] = "Summa finansiella kostnader";
-                totalSheet.Cells[row, 3] = "=SUM(C" + startrow + ":C" + (row - 1);
-                totalSheet.Cells[row, 4] = "=SUM(D" + startrow + ":D" + (row - 1);
-                totalSheet.Cells[row, 5] = "=SUM(E" + startrow + ":E" + (row - 1);
-                totalSheet.Cells[row, 7] = "=SUM(G" + startrow + ":G" + (row - 1);
-                totalSheet.Cells[row, 8] = "=SUM(H" + startrow + ":H" + (row - 1);
-                totalSheet.Cells[row, 9] = "=SUM(I" + startrow + ":I" + (row - 1);
+                totalSheet.Cells["B"+row].Value = "Summa finansiella kostnader";
+                for (int c = 3; c < 18; c++)
+                {
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
+
+                }
                 row++;
-                
+
                 row++;
 
                 //8800-8999 Bokslutsdispositioner
-                totalSheet.Cells[row, 2] = "Bokslutsdispositioner";
+                totalSheet.Cells["B"+row].Value = "Bokslutsdispositioner";
                 row++;
                 startrow = row;
                 foreach (string s in konton.Keys)
@@ -880,89 +857,82 @@ namespace SIEResultat
                     int konto = Int32.Parse(s);
                     if (konto >= 8800 && konto <= 8999)
                     {
-                        totalSheet.Cells[row, 1] = konto;
-                        totalSheet.Cells[row, 2] = konton[s];
+                        totalSheet.Cells["A" + row].Value = konto;
+                        totalSheet.Cells["B" + row].Value = konton[s.ToString()];
+                        for (int m = 0; m < 12; m++)
+                        {
+                            if (months[m].ContainsKey(konto.ToString()))
+                                totalSheet.Cells[alpha[m + 3] + "" + row].Value = months[m][konto.ToString()];
+                            else
+                                totalSheet.Cells["C" + row].Value = 0.0;
 
-                        if (sumMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 3] = sumMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 3] = 0.0;
-                        if (sumLastMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 4] = sumLastMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 4] = 0.0;
-                        if (sumMonth.ContainsKey(konto.ToString()) & sumLastMonth.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 5] = sumMonth[konto.ToString()] - sumLastMonth[konto.ToString()];
-                        else
-                            totalSheet.Cells[row, 5] = 0.0;
+
+                        }
 
                         if (sumYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 7] = sumYTD[konto.ToString()];
+                            totalSheet.Cells["O" + row].Value = sumYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 7] = 0.0;
+                            totalSheet.Cells["O" + row].Value = 0.0;
                         if (sumLastYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 8] = sumLastYTD[konto.ToString()];
+                            totalSheet.Cells["P" + row].Value = sumLastYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 8] = 0.0;
+                            totalSheet.Cells["P" + row].Value = 0.0;
                         if (sumYTD.ContainsKey(konto.ToString()) & sumLastYTD.ContainsKey(konto.ToString()))
-                            totalSheet.Cells[row, 9] = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
+                            totalSheet.Cells["Q" + row].Value = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
                         else
-                            totalSheet.Cells[row, 9] = 0.0;
+                            totalSheet.Cells["Q" + row].Value = 0.0;
                         row++;
                     }
                 }
-                rangeStr = startrow + ":" + (row -1);
-                myRange = totalSheet.Rows[rangeStr] as Excel.Range;
-                myRange.Group();
-               
-                
-                
+                for (int r = startrow; r <= (row - 1); r++)
+                {
+                    totalSheet.Row(r).OutlineLevel = 1;
+                    totalSheet.Row(r).Collapsed = true;
+                }
                 if (startrow == row)
                     row++;
                 kostnadsRader.Add(row);
-                totalSheet.Cells[row, 2] = "Summa bokslutsdispositioner";
-                totalSheet.Cells[row, 3] = "=SUM(C" + startrow + ":C" + (row - 1);
-                totalSheet.Cells[row, 4] = "=SUM(D" + startrow + ":D" + (row - 1);
-                totalSheet.Cells[row, 5] = "=SUM(E" + startrow + ":E" + (row - 1);
-                totalSheet.Cells[row, 7] = "=SUM(G" + startrow + ":G" + (row - 1);
-                totalSheet.Cells[row, 8] = "=SUM(H" + startrow + ":H" + (row - 1);
-                totalSheet.Cells[row, 9] = "=SUM(I" + startrow + ":I" + (row - 1);
-                row++;
-                row++;
-                string summaKostnader = "=SUM(C";
-                foreach (int n in kostnadsRader)
+                totalSheet.Cells["B"+row].Value = "Summa bokslutsdispositioner";
+                for (int c = 3; c < 18; c++)
                 {
-                    summaKostnader += n + "+C";
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
+
                 }
-                summaKostnader = summaKostnader.Substring(0, summaKostnader.Length - 2) + ")";
+                row++;
+                row++;
+                
                 kostnadsRad = row;
-                totalSheet.Cells[row, 2] = "Summa kostnader";
-                totalSheet.Cells[row, 3] = summaKostnader;
-                totalSheet.Cells[row, 4] = summaKostnader.Replace("C","D") ;
-                totalSheet.Cells[row, 5] = summaKostnader.Replace("C", "E");
-                totalSheet.Cells[row, 7] = summaKostnader.Replace("C", "G");
-                totalSheet.Cells[row, 8] = summaKostnader.Replace("C", "H");
-                totalSheet.Cells[row, 9] = summaKostnader.Replace("C", "I");
+                totalSheet.Cells["B"+row].Value = "Summa kostnader";
+                 for (int c = 3; c<18; c++)
+                {
+                    string summaKostnader = "SUM("+alpha[c-1];
+                    foreach (int n in kostnadsRader)
+                    {
+                        summaKostnader += n + "+"+alpha[c-1];
+                    }
+                    summaKostnader = summaKostnader.Substring(0, summaKostnader.Length - 2) + ")";
+                    totalSheet.Cells[alpha[c - 1] +""+row].Formula = summaKostnader;
+
+                }
 
 
                 row++;
                 row++;
-                totalSheet.Cells[row, 2] = "Resultat";
-                totalSheet.Cells[row, 3] = "=C"+bruttoRad+"+C"+kostnadsRad;
-                totalSheet.Cells[row, 4] = "=D" + bruttoRad + "+D" + kostnadsRad;
-                totalSheet.Cells[row, 5] = "=E" + bruttoRad + "+E" + kostnadsRad;
-                totalSheet.Cells[row, 7] = "=G" + bruttoRad + "+G" + kostnadsRad;
-                totalSheet.Cells[row, 8] = "=H" + bruttoRad + "+H" + kostnadsRad;
-                totalSheet.Cells[row, 9] = "=I" + bruttoRad + "+I" + kostnadsRad;
+                totalSheet.Cells["B"+row].Value = "Resultat";
+                for (int c = 3; c<18; c++)
+                {
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c-1] + bruttoRad + "+" + alpha[c-1] + kostnadsRad+")";
 
-
-                totalSheet.Range["C7:I" + row].NumberFormat = "# ##0,;[Red]-# ##0,";
-                totalSheet.Columns.AutoFit();
-                totalSheet.Activate();
-                totalSheet.Application.ActiveWindow.SplitRow = 6;
-                totalSheet.Application.ActiveWindow.SplitColumn = 2;
-                totalSheet.Application.ActiveWindow.FreezePanes = true;
-                totalSheet.Outline.ShowLevels(1, 1);
+                }
+                for (int r = 3; r <= 14; r++)
+                {
+                    totalSheet.Column(r).OutlineLevel = 1;
+                    totalSheet.Column(r).Collapsed = true;
+                }
+                totalSheet.Cells["C7:Z" + row].Style.Numberformat.Format = "#,### ;[Red]-#,### ";
+                totalSheet.Cells["A1:Z"+row].AutoFitColumns();
+                totalSheet.View.FreezePanes(6, 2);
+                
                 
 
 
@@ -975,7 +945,567 @@ namespace SIEResultat
             }
         }
 
-        private DateTime endOfMonth(DateTime datum)
+
+        private void Total(ExcelPackage wb, Objekt o)
+        {
+            try
+            {
+                char[] alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
+                string resenh;
+                if (o == null)
+                    resenh = "*";
+                else
+                    resenh = o.Id;
+                Console.WriteLine(resenh);
+                DateTime startMonth = DateTime.Parse(comboBox1.SelectedItem.ToString() + "-01");
+                DateTime endMonth = endOfMonth(DateTime.Parse(comboBox1.SelectedItem.ToString() + "-01"));
+                DateTime startYear;
+                DateTime endYear;
+                DateTime startPreviousYear;
+
+                if (startMonth.Month < 5)
+                {
+                    startYear = new DateTime(startMonth.Year - 1, 5, 1);
+                    endYear = new DateTime(startMonth.Year, 4, 30);
+                }
+                else
+                {
+                    startYear = new DateTime(startMonth.Year, 5, 1);
+                    endYear = new DateTime(startMonth.Year + 1, 4, 30);
+                }
+                if (startMonth.Month < 5)
+                    startPreviousYear = new DateTime(startMonth.Year - 2, 5, 1);
+                else
+                    startPreviousYear = new DateTime(startMonth.Year - 1, 5, 1);
+
+                if (checkBox1.Checked)
+                {
+                    startMonth = new DateTime(startYear.Year, startYear.Month, 1);
+                }
+                DateTime endPreviousYear = new DateTime(startMonth.Year - 1, startMonth.AddYears(-1).Month, endOfMonth(startMonth.AddYears(-1)).Day);
+                DateTime startPrevMonth = startMonth.AddMonths(-1);
+                DateTime endPrevMonth = endOfMonth(startMonth.AddMonths(-1));
+                if (checkBox1.Checked)
+                {
+                    startPrevMonth = startPreviousYear;
+                    endPrevMonth = endPreviousYear;
+                }
+
+
+
+                int intaktsRad;
+                int rorelseKostnadsRad;
+                int bruttoRad;
+                List<int> kostnadsRader = new List<int>();
+
+                int kostnadsRad;
+
+
+                string newname = resenh;
+                ExcelWorksheet totalSheet;
+
+                if (resenh.Contains("*"))
+                    totalSheet = wb.Workbook.Worksheets.Add("TOTAL");
+                else
+                {
+                    foreach (ExcelWorksheet ws in wb.Workbook.Worksheets)
+                    {
+                        if (ws.Name.Equals(newname))
+                            newname += "_";
+                    }
+
+                    totalSheet = wb.Workbook.Worksheets.Add(newname);
+                }
+
+                totalSheet.Cells["B1"].Value = fNamn;
+                totalSheet.Cells["C1"].Value = resenh;
+                if (o != null)
+                    totalSheet.Cells["C1"].Value = o.Namn;
+
+
+                totalSheet.Cells["A2"].Value = "Från:";
+                totalSheet.Cells["B2"].Value = startMonth;
+                totalSheet.Cells["A3"].Value = "Till:";
+                totalSheet.Cells["B3"].Value = endYear;
+
+                //Skapa tabellerna
+
+                Dictionary<string, double>[] months = new Dictionary<string, double>[12];
+                for (int m = 0; m < 12; m++)
+                {
+                    // Console.WriteLine(m + ":" + startMonth.AddMonths(m).ToShortDateString() + " -- " + endMonth.AddMonths(m).ToShortDateString());
+                    months[m] = SumTransaktion(new DateTime(startMonth.AddMonths(m).Ticks), new DateTime(endMonth.AddMonths(m).Ticks), resenh);
+                }
+
+                Dictionary<string, double> sumYTD = SumTransaktion(startYear, endYear, resenh);
+                Dictionary<string, double> sumLastYTD = SumTransaktion(startPreviousYear, endPreviousYear, resenh);
+
+
+                int row = 6;
+                totalSheet.Cells["A5"].Value = "Konto";
+                totalSheet.Cells["B5"].Value = "Benämning";
+                for (int m = 0; m < 12; m++)
+                    totalSheet.Cells[alpha[m + 3].ToString() + "5"].Value = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(startMonth.AddMonths(m).Month);
+                totalSheet.Cells["O5"].Value = "Ack resultat";
+                totalSheet.Cells["P5"].Value = "Ack resultat fg år";
+                totalSheet.Cells["Q5"].Value = "Differens";
+
+                row++;
+                totalSheet.Cells["B" + row].Value = "Intäkter";
+                row++;
+                //3000-3999
+                int startrow = row;
+                int[] sorteradeKonton = new int[konton.Count];
+                int i = 0;
+                foreach (string s in konton.Keys)
+                {
+                    sorteradeKonton[i] = Int32.Parse(s.Trim());
+                    i++;
+                }
+
+                Array.Sort<int>(sorteradeKonton);
+
+                foreach (int s in sorteradeKonton)
+                {
+
+                    int konto = s;
+                    if (konto >= 3000 && konto <= 3999)
+                    {
+                        totalSheet.Cells["A" + row].Value = konto;
+                        totalSheet.Cells["B" + row].Value = konton[s.ToString()];
+                        for (int m = 0; m < 12; m++)
+                        {
+                            if (months[m].ContainsKey(konto.ToString()))
+                                totalSheet.Cells[alpha[m + 3].ToString() + row].Value = months[m][konto.ToString()];
+                            else
+                                totalSheet.Cells[alpha[m + 3].ToString() + row].Value = 0.0;
+
+
+                        }
+
+                        if (sumYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["O" + row].Value = sumYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["O" + row].Value = 0.0;
+                        if (sumLastYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["P" + row].Value = sumLastYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["P" + row].Value = 0.0;
+                        if (sumYTD.ContainsKey(konto.ToString()) & sumLastYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["Q" + row].Value = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["Q" + row].Value = 0.0;
+                        row++;
+                    }
+                }
+
+                for (int r = startrow; r <= (row - 1); r++)
+                {
+                    totalSheet.Row(r).OutlineLevel = 1;
+                    totalSheet.Row(r).Collapsed = true;
+                }
+                if (startrow == row)
+                    row++;
+                totalSheet.Cells["B" + row].Value = "Summa intäkter";
+                for (int c = 3; c < 18; c++)
+                {
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
+
+                }
+
+                intaktsRad = row;
+
+
+
+                row++;
+                row++;
+
+                //4000-4999 Rörelsens kostnader
+                totalSheet.Cells["B" + row].Value = "Rörelsens kostnader";
+                row++;
+                startrow = row;
+                foreach (string s in konton.Keys)
+                {
+
+                    int konto = Int32.Parse(s);
+                    if (konto >= 4000 && konto <= 4999)
+                    {
+                        totalSheet.Cells["A" + row].Value = konto;
+                        totalSheet.Cells["B" + row].Value = konton[s.ToString()];
+                        for (int m = 0; m < 12; m++)
+                        {
+                            if (months[m].ContainsKey(konto.ToString()))
+                                totalSheet.Cells[alpha[m + 3] + "" + row].Value = months[m][konto.ToString()];
+                            else
+                                totalSheet.Cells["C" + row].Value = 0.0;
+
+
+                        }
+
+                        if (sumYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["O" + row].Value = sumYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["O" + row].Value = 0.0;
+                        if (sumLastYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["P" + row].Value = sumLastYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["P" + row].Value = 0.0;
+                        if (sumYTD.ContainsKey(konto.ToString()) & sumLastYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["Q" + row].Value = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["Q" + row].Value = 0.0;
+                        row++;
+                    }
+                }
+                for (int r = startrow; r <= (row - 1); r++)
+                {
+                    totalSheet.Row(r).OutlineLevel = 1;
+                    totalSheet.Row(r).Collapsed = true;
+                }
+                if (startrow == row)
+                    row++;
+                totalSheet.Cells["B" + row].Value = "Summa rörelsens kostnader";
+                for (int c = 3; c < 18; c++)
+                {
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
+
+                }
+                rorelseKostnadsRad = row;
+                row++;
+                row++;
+                bruttoRad = row;
+                totalSheet.Cells["B" + row].Value = "Bruttovinst";
+                for (int c = 3; c < 18; c++)
+                {
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + intaktsRad + "+" + alpha[c - 1] + rorelseKostnadsRad + ")";
+
+                }
+
+                row++;
+                row++;
+
+
+                //5000-6999 Externa kostnader
+                totalSheet.Cells["B" + row].Value = "Externa kostnader";
+                row++;
+                startrow = row;
+                foreach (string s in konton.Keys)
+                {
+
+                    int konto = Int32.Parse(s);
+                    if (konto >= 5000 && konto <= 6999)
+                    {
+                        totalSheet.Cells["A" + row].Value = konto;
+                        totalSheet.Cells["B" + row].Value = konton[s.ToString()];
+                        for (int m = 0; m < 12; m++)
+                        {
+                            if (months[m].ContainsKey(konto.ToString()))
+                                totalSheet.Cells[alpha[m + 3] + "" + row].Value = months[m][konto.ToString()];
+                            else
+                                totalSheet.Cells["C" + row].Value = 0.0;
+
+
+                        }
+
+                        if (sumYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["O" + row].Value = sumYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["O" + row].Value = 0.0;
+                        if (sumLastYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["P" + row].Value = sumLastYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["P" + row].Value = 0.0;
+                        if (sumYTD.ContainsKey(konto.ToString()) & sumLastYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["Q" + row].Value = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["Q" + row].Value = 0.0;
+                        row++;
+                    }
+                }
+                for (int r = startrow; r <= (row - 1); r++)
+                {
+                    totalSheet.Row(r).OutlineLevel = 1;
+                    totalSheet.Row(r).Collapsed = true;
+                }
+                if (startrow == row)
+                    row++;
+                kostnadsRader.Add(row);
+                totalSheet.Cells["B" + row].Value = "Summa externa kostnader";
+                for (int c = 3; c < 18; c++)
+                {
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
+
+                }
+                row++;
+
+                row++;
+
+
+                //7000-7799 Personalkostnader
+                totalSheet.Cells["B" + row].Value = "Personalkostnader";
+                row++;
+                startrow = row;
+                foreach (string s in konton.Keys)
+                {
+
+                    int konto = Int32.Parse(s);
+                    if (konto >= 7000 && konto <= 7799)
+                    {
+                        totalSheet.Cells["A" + row].Value = konto;
+                        totalSheet.Cells["B" + row].Value = konton[s.ToString()];
+                        for (int m = 0; m < 12; m++)
+                        {
+                            if (months[m].ContainsKey(konto.ToString()))
+                                totalSheet.Cells[alpha[m + 3] + "" + row].Value = months[m][konto.ToString()];
+                            else
+                                totalSheet.Cells["C" + row].Value = 0.0;
+
+
+                        }
+
+                        if (sumYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["O" + row].Value = sumYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["O" + row].Value = 0.0;
+                        if (sumLastYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["P" + row].Value = sumLastYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["P" + row].Value = 0.0;
+                        if (sumYTD.ContainsKey(konto.ToString()) & sumLastYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["Q" + row].Value = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["Q" + row].Value = 0.0;
+                        row++;
+                    }
+                }
+                for (int r = startrow; r <= (row - 1); r++)
+                {
+                    totalSheet.Row(r).OutlineLevel = 1;
+                    totalSheet.Row(r).Collapsed = true;
+                }
+                if (startrow == row)
+                    row++;
+                kostnadsRader.Add(row);
+                totalSheet.Cells["B" + row].Value = "Summa personalkostnader";
+                for (int c = 3; c < 18; c++)
+                {
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
+
+                }
+                row++;
+
+                row++;
+
+                //7800-7999 Avskrivningar
+                totalSheet.Cells["B" + row].Value = "Avskrivningar";
+                row++;
+                startrow = row;
+                foreach (string s in konton.Keys)
+                {
+
+                    int konto = Int32.Parse(s);
+                    if (konto >= 7800 && konto <= 7999)
+                    {
+                        totalSheet.Cells["A" + row].Value = konto;
+                        totalSheet.Cells["B" + row].Value = konton[s.ToString()];
+                        for (int m = 0; m < 12; m++)
+                        {
+                            if (months[m].ContainsKey(konto.ToString()))
+                                totalSheet.Cells[alpha[m + 3] + "" + row].Value = months[m][konto.ToString()];
+                            else
+                                totalSheet.Cells["C" + row].Value = 0.0;
+
+
+                        }
+
+                        if (sumYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["O" + row].Value = sumYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["O" + row].Value = 0.0;
+                        if (sumLastYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["P" + row].Value = sumLastYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["P" + row].Value = 0.0;
+                        if (sumYTD.ContainsKey(konto.ToString()) & sumLastYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["Q" + row].Value = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["Q" + row].Value = 0.0;
+                        row++;
+                    }
+                }
+                for (int r = startrow; r <= (row - 1); r++)
+                {
+                    totalSheet.Row(r).OutlineLevel = 1;
+                    totalSheet.Row(r).Collapsed = true;
+                }
+                if (startrow == row)
+                    row++;
+                kostnadsRader.Add(row);
+                totalSheet.Cells["B" + row].Value = "Summa avskrivningar";
+                for (int c = 3; c < 18; c++)
+                {
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
+
+                }
+                row++;
+
+                row++;
+
+                //8000-8799 Finansiella kostnader
+                totalSheet.Cells["B" + row].Value = "Finansiella kostnader";
+                row++;
+                startrow = row;
+                foreach (string s in konton.Keys)
+                {
+
+                    int konto = Int32.Parse(s);
+                    if (konto >= 8000 && konto <= 8799)
+                    {
+                        totalSheet.Cells["A" + row].Value = konto;
+                        totalSheet.Cells["B" + row].Value = konton[s.ToString()];
+                        for (int m = 0; m < 12; m++)
+                        {
+                            if (months[m].ContainsKey(konto.ToString()))
+                                totalSheet.Cells[alpha[m + 3] + "" + row].Value = months[m][konto.ToString()];
+                            else
+                                totalSheet.Cells["C" + row].Value = 0.0;
+
+
+                        }
+
+                        if (sumYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["O" + row].Value = sumYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["O" + row].Value = 0.0;
+                        if (sumLastYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["P" + row].Value = sumLastYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["P" + row].Value = 0.0;
+                        if (sumYTD.ContainsKey(konto.ToString()) & sumLastYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["Q" + row].Value = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["Q" + row].Value = 0.0;
+                        row++;
+                    }
+                }
+                for (int r = startrow; r <= (row - 1); r++)
+                {
+                    totalSheet.Row(r).OutlineLevel = 1;
+                    totalSheet.Row(r).Collapsed = true;
+                }
+                if (startrow == row)
+                    row++;
+                kostnadsRader.Add(row);
+                totalSheet.Cells["B" + row].Value = "Summa finansiella kostnader";
+                for (int c = 3; c < 18; c++)
+                {
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
+
+                }
+                row++;
+
+                row++;
+
+                //8800-8999 Bokslutsdispositioner
+                totalSheet.Cells["B" + row].Value = "Bokslutsdispositioner";
+                row++;
+                startrow = row;
+                foreach (string s in konton.Keys)
+                {
+
+                    int konto = Int32.Parse(s);
+                    if (konto >= 8800 && konto <= 8999)
+                    {
+                        totalSheet.Cells["A" + row].Value = konto;
+                        totalSheet.Cells["B" + row].Value = konton[s.ToString()];
+                        for (int m = 0; m < 12; m++)
+                        {
+                            if (months[m].ContainsKey(konto.ToString()))
+                                totalSheet.Cells[alpha[m + 3] + "" + row].Value = months[m][konto.ToString()];
+                            else
+                                totalSheet.Cells["C" + row].Value = 0.0;
+
+
+                        }
+
+                        if (sumYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["O" + row].Value = sumYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["O" + row].Value = 0.0;
+                        if (sumLastYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["P" + row].Value = sumLastYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["P" + row].Value = 0.0;
+                        if (sumYTD.ContainsKey(konto.ToString()) & sumLastYTD.ContainsKey(konto.ToString()))
+                            totalSheet.Cells["Q" + row].Value = sumYTD[konto.ToString()] - sumLastYTD[konto.ToString()];
+                        else
+                            totalSheet.Cells["Q" + row].Value = 0.0;
+                        row++;
+                    }
+                }
+                for (int r = startrow; r <= (row - 1); r++)
+                {
+                    totalSheet.Row(r).OutlineLevel = 1;
+                    totalSheet.Row(r).Collapsed = true;
+                }
+                if (startrow == row)
+                    row++;
+                kostnadsRader.Add(row);
+                totalSheet.Cells["B" + row].Value = "Summa bokslutsdispositioner";
+                for (int c = 3; c < 18; c++)
+                {
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
+
+                }
+                row++;
+                row++;
+
+                kostnadsRad = row;
+                totalSheet.Cells["B" + row].Value = "Summa kostnader";
+                for (int c = 3; c < 18; c++)
+                {
+                    string summaKostnader = "SUM(" + alpha[c - 1];
+                    foreach (int n in kostnadsRader)
+                    {
+                        summaKostnader += n + "+" + alpha[c - 1];
+                    }
+                    summaKostnader = summaKostnader.Substring(0, summaKostnader.Length - 2) + ")";
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = summaKostnader;
+
+                }
+
+
+                row++;
+                row++;
+                totalSheet.Cells["B" + row].Value = "Resultat";
+                for (int c = 3; c < 18; c++)
+                {
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + bruttoRad + "+" + alpha[c - 1] + kostnadsRad + ")";
+
+                }
+                for (int r = 3; r <= 14; r++)
+                {
+                    totalSheet.Column(r).OutlineLevel = 1;
+                    totalSheet.Column(r).Collapsed = true;
+                }
+                totalSheet.Cells["C7:Z" + row].Style.Numberformat.Format = "#,### ;[Red]-#,### ";
+                totalSheet.Cells["A1:Z" + row].AutoFitColumns();
+                totalSheet.View.FreezePanes(6, 2);
+
+
+
+
+
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message + Environment.NewLine + ex.StackTrace);
+            }
+        }
+    
+
+        private static DateTime endOfMonth(DateTime datum)
         {
             int[] endDay;
             if (DateTime.IsLeapYear(datum.Year))
@@ -993,14 +1523,63 @@ namespace SIEResultat
         }
 
 
-        private void skapaTabeller(DateTime from, DateTime to)
-        {
-            Dictionary<string, double> sum = SumTransaktion(from, to);
+        
 
-        }
+        private void SkapaResultatsida(ExcelPackage wb)
+            {
+                //För varje flik skapa en rad med 
+                //Kolumner Summa Intäkt, summa rörelsekostnader, bruttovinst, summa externa kostnader, Summa personalkostnader, summa finansiella kostnader, summa kostnader, Resultat
+                ExcelWorksheet overSheet = wb.Workbook.Worksheets.Add("Översikt");
+               
 
-        private Dictionary<string, double> SumTransaktion(DateTime from, DateTime to)
-        {
+                overSheet.Cells["C1"].Value = "Summa Intäkter";
+                overSheet.Cells["D1"].Value = "Summa rörelsens kostnader";
+                overSheet.Cells["E1"].Value = "Bruttovinst";
+                overSheet.Cells["F1"].Value = "Summa externa kostnader";
+                overSheet.Cells["G1"].Value = "Summa personalkostnader";
+                overSheet.Cells["H1"].Value = "Summa avskrivningar";
+                overSheet.Cells["I1"].Value = "Summa finansiella kostnader";
+                overSheet.Cells["J1"].Value = "Summa bokslutsdispositioner";
+                overSheet.Cells["K1"].Value = "Summa kostnader";
+                overSheet.Cells["L1"].Value = "Resultat";
+
+                int i = 2;
+                foreach (string s in valda)
+                {
+                    overSheet.Cells["A"+i].Value = s;
+
+                    overSheet.Cells["C"+i].Formula = "VLOOKUP(C1,'" + s + "'!B:O,14,0)";
+                    overSheet.Cells["D"+i].Formula = "VLOOKUP(D1,'" + s + "'!B:O,14,0)";
+                    overSheet.Cells["E"+i].Formula = "VLOOKUP(E1,'" + s + "'!B:O,14,0)";
+                    overSheet.Cells["F"+i].Formula = "VLOOKUP(F1,'" + s + "'!B:O,14,0)";
+                    overSheet.Cells["G"+i].Formula = "VLOOKUP(G1,'" + s + "'!B:O,14,0)";
+                    overSheet.Cells["H"+i].Formula = "VLOOKUP(H1,'" + s + "'!B:O,14,0)";
+                    overSheet.Cells["I"+i].Formula = "VLOOKUP(I1,'" + s + "'!B:O,14,0)";
+                    overSheet.Cells["J"+i].Formula = "VLOOKUP(J1,'" + s + "'!B:O,14,0)";
+                    overSheet.Cells["K"+i].Formula = "VLOOKUP(K1,'" + s + "'!B:O,14,0)";
+                    overSheet.Cells["L"+i].Formula = "VLOOKUP(L1,'" + s + "'!B:O,14,0)";
+                    i++;
+                }
+                overSheet.Cells["A"+i].Value = "TOTAL";
+
+                overSheet.Cells[i, 3].Formula = "VLOOKUP(C1," + "TOTAL" + "!B:O,14,0)";
+                overSheet.Cells[i, 4].Formula = "VLOOKUP(D1," + "TOTAL" + "!B:O,14,0)";
+                overSheet.Cells[i, 5].Formula = "VLOOKUP(E1," + "TOTAL" + "!B:O,14,0)";
+                overSheet.Cells[i, 6].Formula = "VLOOKUP(F1," + "TOTAL" + "!B:O,14,0)";
+                overSheet.Cells[i, 7].Formula = "VLOOKUP(G1," + "TOTAL" + "!B:O,14,0)";
+                overSheet.Cells[i, 8].Formula = "VLOOKUP(H1," + "TOTAL" + "!B:O,14,0)";
+                overSheet.Cells[i, 9].Formula = "VLOOKUP(I1," + "TOTAL" + "!B:O,14,0)";
+                overSheet.Cells[i, 10].Formula = "VLOOKUP(J1," + "TOTAL" + "!B:O,14,0)";
+                overSheet.Cells[i, 11].Formula = "VLOOKUP(K1," + "TOTAL" + "!B:O,14,0)";
+                overSheet.Cells[i, 12].Formula = "VLOOKUP(L1," + "TOTAL" + "!B:O,14,0)";
+
+                overSheet.Cells["C2:L" + i].Style.Numberformat.Format = "#,### ;[Red]-#,### ";
+                overSheet.Cells["A1:L" + i].AutoFitColumns();
+
+            }
+
+            private Dictionary<string, double> SumTransaktion(DateTime from, DateTime to)
+            {
             Dictionary<string, double> sum = new Dictionary<string, double>();
 
             foreach (Transaktion t in transaktioner)
@@ -1029,8 +1608,8 @@ namespace SIEResultat
 
                 if (!sum.ContainsKey(t.Kontonr))
                     sum.Add(t.Kontonr, 0.0); //Add to dictionary if not already in it
-                if (t.Objekt.ContainsKey("1") )
-                    if(t.Objekt["1"].Equals(resenh) || resenh.Equals("*") )
+                if (t.Objekt.ContainsKey(selectedType) )
+                    if(t.Objekt[selectedType].Equals(resenh) || resenh.Equals("*") )
                         if(t.Transaktionsdatum >= from & t.Transaktionsdatum <= to)
                             sum[t.Kontonr] += t.Belopp; // Add t.Belopp to Sum if resenh == t.Id
 
@@ -1043,6 +1622,7 @@ namespace SIEResultat
 
         private void button4_Click(object sender, EventArgs e)
         {
+            valda.Clear();
             foreach(object o in checkedListBox1.CheckedItems)
             {
                 
@@ -1057,6 +1637,80 @@ namespace SIEResultat
         private void button5_Click(object sender, EventArgs e)
         {
             SaveTransactions();
+        }
+
+        private void SaveTransactions()
+        {
+
+        }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                string fileContents = "";
+
+                OpenFileDialog openFileDialog1 = new OpenFileDialog
+                {
+                    Filter = "SIE 4|*.SE",
+                    Title = "Select a SIE File"
+                };
+
+                // Show the Dialog.  
+                // If the user clicked OK in the dialog and  
+                // a .CUR file was selected, open it.  
+                if (openFileDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    // Assign the cursor in the Stream to the Form's Cursor property.  
+                    // REGEXP ("([^\"]\\S*|\".+?\")\\s*")   
+
+                    byte[] indata = File.ReadAllBytes(openFileDialog1.FileName);
+
+                    fileContents = convertUnicode(indata);
+                    //fileContents = indata.ToString();
+
+                }
+                if (fileContents.Length > 1)
+                {
+                    List<string> nuvarandelista = new List<string>(Regex.Split(fileContents, Environment.NewLine));
+                    foreach (string s in nuvarandelista)
+                        lista.Add(s);
+
+                }
+                else
+                {
+                    throw new Exception("Fel vid filinläsning");
+                }
+                // MessageBox.Show("Rader: " + list.Count);
+                button3.Enabled = true;
+                this.Update();
+                openFileDialog1.Dispose();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Fel: " + ex.Message + " \n" + ex.StackTrace);
+            }
+        }
+
+        private void Label3_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void Label5_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void Label6_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void ComboBox2_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            SelectResultatenhet(comboBox2.SelectedItem.ToString());
+
         }
     }//class
 }//namespace
