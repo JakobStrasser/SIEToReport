@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace EPPlusResultat
 {
@@ -35,16 +31,16 @@ namespace EPPlusResultat
         public int CompareTo(Objekt o)
         {
             if (o == null) return 1;
-            if (this.Typ.Equals(o.Typ))
+            if (Typ.Equals(o.Typ))
                 return Id.CompareTo(o.Id);
             else
                 return Typ.CompareTo(o.Typ);
 
         }
 
-        public  bool Equals(Objekt o)
+        public bool Equals(Objekt o)
         {
-            if (this.typ.Equals(o.Typ) & this.id.Equals(o.Id) & this.namn.Equals(o.Namn))
+            if (typ.Equals(o.Typ) & id.Equals(o.Id) & namn.Equals(o.Namn))
                 return true;
             else
                 return false;
@@ -53,7 +49,7 @@ namespace EPPlusResultat
         public override bool Equals(Object o)
         {
             Objekt localO = (Objekt)o;
-            if (this.typ.Equals(localO.Typ) & this.id.Equals(localO.Id) & this.namn.Equals(localO.Namn))
+            if (typ.Equals(localO.Typ) & id.Equals(localO.Id) & namn.Equals(localO.Namn))
                 return true;
             else
                 return false;
@@ -65,33 +61,33 @@ namespace EPPlusResultat
         {
             get
             {
-                return this.typ;
+                return typ;
             }
             set
             {
-                this.typ = value;
+                typ = value;
             }
         }
         public string Id
         {
             get
             {
-                return this.id;
+                return id;
             }
             set
             {
-                this.id = value;
+                id = value;
             }
         }
         public string Namn
         {
             get
             {
-                return this.namn;
+                return namn;
             }
             set
             {
-                this.namn = value;
+                namn = value;
             }
         }
     }

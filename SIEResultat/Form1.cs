@@ -1,16 +1,12 @@
-﻿using System;
+﻿
+using OfficeOpenXml;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using System.IO;
 using System.Text.RegularExpressions;
-using Microsoft.Office.Interop;
-using OfficeOpenXml;
+using System.Windows.Forms;
 
 
 
@@ -18,21 +14,19 @@ using OfficeOpenXml;
 namespace EPPlusResultat
 {
     public partial class Form1 : Form
-    { 
-        
-        Microsoft.Office.Interop.Excel.Application myApp;
-        private List<string> lista;
+    {
 
-        private SortedDictionary<string, string> konton = new SortedDictionary<string, string>();
-        private Dictionary<string, string> dimensioner = new Dictionary<string, string>();
-        private List<Objekt> objekten = new List<Objekt>();
-        private List<string> valda = new List<string>();
-        private List<Transaktion> transaktioner = new List<Transaktion>();
-        private string regexDelning = "([^\"]\\S*|\".+?\"|[^\\s*$])\\s*";
+
+        private List<string> lista;
+        private readonly SortedDictionary<string, string> konton = new SortedDictionary<string, string>();
+        private readonly Dictionary<string, string> dimensioner = new Dictionary<string, string>();
+        private readonly List<Objekt> objekten = new List<Objekt>();
+        private readonly List<string> valda = new List<string>();
+        private readonly List<Transaktion> transaktioner = new List<Transaktion>();
+        private readonly string regexDelning = "([^\"]\\S*|\".+?\"|[^\\s*$])\\s*";
         private string fNamn = "";
         private string selectedType = "";
-        
-        ExcelPackage wb;
+        private ExcelPackage wb;
 
 
         public Form1()
@@ -45,7 +39,7 @@ namespace EPPlusResultat
 
         }
 
-         ~Form1()
+        ~Form1()
         {
             wb.Dispose();
         }
@@ -64,11 +58,11 @@ namespace EPPlusResultat
 
                 // Show the Dialog.  
                 // If the user clicked OK in the dialog and  
-                  
+
                 if (openFileDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
-                    
-                  
+
+
 
                     byte[] indata = File.ReadAllBytes(openFileDialog1.FileName);
 
@@ -87,7 +81,7 @@ namespace EPPlusResultat
                 }
                 // MessageBox.Show("Rader: " + list.Count);
                 button6.Enabled = true;
-                this.Update();
+                Update();
                 openFileDialog1.Dispose();
             }
             catch (Exception ex)
@@ -95,7 +89,7 @@ namespace EPPlusResultat
                 MessageBox.Show("Fel: " + ex.Message + " \n" + ex.StackTrace);
             }
         }
-        
+
         private void button2_Click(object sender, EventArgs e)
         {
 
@@ -104,7 +98,7 @@ namespace EPPlusResultat
                 // myApp = new Microsoft.Office.Interop.Excel.Application();
 
                 wb = new ExcelPackage();
-                
+
 
                 objekten.Sort();
                 string valdTyp = comboBox2.SelectedItem.ToString();
@@ -122,29 +116,29 @@ namespace EPPlusResultat
                         }
 
                     }
-                   
-                    
+
+
                 }
                 Console.WriteLine("Antal flikar " + wb.Workbook.Worksheets.Count);
-                
-                 toolStripStatusLabel1.Text = "Skapar flik TOTAL";
 
-                 if (checkBox1.Checked)
-                             YearlyTotal(wb, null);
-                         else Total(wb,null);
-                 SkapaResultatsida(wb);
-                 wb.Workbook.Worksheets["TOTAL"].Select();
-                 wb.Workbook.Calculate();
-                 
-                 SaveFileDialog sfd = new SaveFileDialog
-                 {
-                     Filter = "Excel | *.xlsx"
-                 };
-                 toolStripStatusLabel1.Text = "Excelfil sparad som " + sfd.FileName;
-                
+                toolStripStatusLabel1.Text = "Skapar flik TOTAL";
+
+                if (checkBox1.Checked)
+                    YearlyTotal(wb, null);
+                else Total(wb, null);
+                SkapaResultatsida(wb);
+                wb.Workbook.Worksheets["TOTAL"].Select();
+                wb.Workbook.Calculate();
+
+                SaveFileDialog sfd = new SaveFileDialog
+                {
+                    Filter = "Excel | *.xlsx"
+                };
+                toolStripStatusLabel1.Text = "Excelfil sparad som " + sfd.FileName;
+
                 sfd.ShowDialog();
-                
-                
+
+
                 using (var fileData = new FileStream(sfd.FileName, FileMode.Create))
                 {
                     wb.SaveAs(fileData);
@@ -153,7 +147,7 @@ namespace EPPlusResultat
             }
             catch (Exception ex)
             {
-               
+
                 MessageBox.Show(ex.Message + Environment.NewLine + ex.StackTrace);
             }
         }
@@ -200,18 +194,18 @@ namespace EPPlusResultat
                         int nextSpace = currentRow.Substring(hashMark).IndexOf(" ") + hashMark;
                         tokenString = currentRow.Substring(hashMark, nextSpace - hashMark);
                         //textBox1.Text += Environment.NewLine + tokenString;
-                        
+
                         switch (tokenString)
                         {
                             case "#FNAMN":
                                 {
-                                   
+
                                     string[] konto = Regex.Split(currentRow, regexDelning);
-                                    fNamn = konto[3].ToString().Replace('"',' ').Trim();
-                                    this.label2.Text = "Företag: " + fNamn;
+                                    fNamn = konto[3].ToString().Replace('"', ' ').Trim();
+                                    label2.Text = "Företag: " + fNamn;
                                     break;
                                 }
-                          
+
                             case "#KONTO":
                                 {
                                     char[] charSeparators = new char[] { ' ' };
@@ -247,7 +241,7 @@ namespace EPPlusResultat
                                     char[] charSeparators = new char[] { ' ' };
                                     string[] dim = Regex.Split(currentRow, regexDelning);
                                     List<string> rensaDim = new List<string>();
-                                    
+
                                     foreach (string s in dim)
                                     {
                                         if (!s.Equals(""))
@@ -267,7 +261,7 @@ namespace EPPlusResultat
                                     if (add)
                                     {
                                         objekten.Add(new Objekt(obj_typ, obj_id, obj_namn));
-                                        
+
                                     }
                                     break;
                                 }
@@ -281,19 +275,19 @@ namespace EPPlusResultat
                                     if (brackets.Length > 0)
                                     {
                                         dim = Regex.Split(brackets, regexDelning);
-                                     
+
                                         for (int i = 1; i < dim.Length - 3; i += 4)
                                         {
                                             addedAtLeastOne = true;
                                             objekt.Add(dim[i].Replace('"', ' ').Trim(), dim[i + 2].Replace('"', ' ').Trim().ToUpper());
-                                            
+
                                         }
                                         if (!addedAtLeastOne)
                                         {
                                             if (!objekt.ContainsKey("Saknas"))
                                             {
                                                 objekt.Add("1", "Saknas");
-                                                
+
 
                                             }
                                         }
@@ -311,12 +305,12 @@ namespace EPPlusResultat
                                     String transaktionsdatum = "";
                                     if (transaktionsdatum.Equals(""))
                                         transaktionsdatum = verdatum;
-                                    if (!monthList.Contains(transaktionsdatum.Substring(0, 4)+"-"+transaktionsdatum.Substring(4,2)))
+                                    if (!monthList.Contains(transaktionsdatum.Substring(0, 4) + "-" + transaktionsdatum.Substring(4, 2)))
                                         monthList.Add(transaktionsdatum.Substring(0, 4) + "-" + transaktionsdatum.Substring(4, 2));
                                     String kontonr = rensaDelar[1].Replace('"', ' ').Trim();
                                     string b = rensaDelar[2].Replace('.', ',').Replace('"', ' ').Trim();
                                     double belopp = -double.Parse(b);
-                                    
+
                                     string transtext = "";
                                     if (rensaDelar.Count > 4)
                                         transtext = rensaDelar[4];
@@ -325,7 +319,7 @@ namespace EPPlusResultat
                                     double kvantitet = 0.0;
                                     string sign = "";
                                     DateTime transaktionsdate = DateTime.Parse(transaktionsdatum.Substring(0, 4) + "-" + transaktionsdatum.Substring(4, 2) + "-" + transaktionsdatum.Substring(6, 2));
-                                    transaktioner.Add(new Transaktion(objekt, transaktionsdate, kontonr, belopp/100, transtext, kvantitet, sign));
+                                    transaktioner.Add(new Transaktion(objekt, transaktionsdate, kontonr, belopp / 100, transtext, kvantitet, sign));
                                     break;
                                 }
                             case "#VER":
@@ -342,24 +336,24 @@ namespace EPPlusResultat
                                 }
                         } //switch
                     } //if
-                   
-                   
-                    this.Update();
+
+
+                    Update();
                     toolStripProgressBar1.Increment(1);
                     toolStripStatusLabel1.Text = "Bearbetar rad " + toolStripProgressBar1.Value + " av " + toolStripProgressBar1.Maximum;
                 } //foreach
 
                 monthList.Sort();
-                foreach(string s in monthList)
+                foreach (string s in monthList)
                 {
                     comboBox1.Items.Add(s);
-                  
+
                 }
-               
+
                 foreach (string k in dimensioner.Keys)
                 {
                     comboBox2.Items.Add(dimensioner[k]);
-                   
+
                 }
                 comboBox2.SelectedIndex = comboBox2.Items.IndexOf("Resultatenhet");
                 comboBox1.SelectedItem = comboBox1.Items[comboBox1.Items.Count - 1];
@@ -369,7 +363,7 @@ namespace EPPlusResultat
             }//try
             catch (Exception ex)
             {
-              
+
                 MessageBox.Show(ex.Message + Environment.NewLine + ex.StackTrace);
             }//Catch
 
@@ -385,7 +379,7 @@ namespace EPPlusResultat
                     checkedListBox1.Items.Add(o.Id);
 
             }
-         
+
 
             for (int i = 0; i < checkedListBox1.Items.Count; i++)
             {
@@ -394,23 +388,7 @@ namespace EPPlusResultat
             selectedType = myKey;
 
         }
-        private void SelectResultatenhet()
-        {
-            foreach (Objekt o in objekten)
-            {
-                if (o.Typ.Equals("1"))
-                    checkedListBox1.Items.Add(o.Id);
 
-            }
-
-            for(int i = 0; i<checkedListBox1.Items.Count;i++)
-            {
-                checkedListBox1.SetItemChecked(i, true);
-            }
-           
-        }
-
-     
         private void YearlyTotal(ExcelPackage wb, Objekt o)
         {
             try
@@ -429,8 +407,8 @@ namespace EPPlusResultat
                 DateTime startPreviousYear = DateTime.Parse("2017-05-01");
 
                 DateTime endPreviousYear = DateTime.Parse("2018-04-30");
-                
-               
+
+
 
                 int intaktsRad;
                 int rorelseKostnadsRad;
@@ -441,10 +419,10 @@ namespace EPPlusResultat
 
 
                 string newname = resenh;
-                ExcelWorksheet totalSheet; 
+                ExcelWorksheet totalSheet;
 
                 if (resenh.Contains("*"))
-                    totalSheet= wb.Workbook.Worksheets.Add("TOTAL");
+                    totalSheet = wb.Workbook.Worksheets.Add("TOTAL");
                 else
                 {
                     foreach (ExcelWorksheet ws in wb.Workbook.Worksheets)
@@ -472,12 +450,12 @@ namespace EPPlusResultat
                 //Skapa tabellerna
 
                 Dictionary<string, double>[] months = new Dictionary<string, double>[12];
-                for (int m = 0;m < 12;m++)
+                for (int m = 0; m < 12; m++)
                 {
-                   // Console.WriteLine(m + ":" + startMonth.AddMonths(m).ToShortDateString() + " -- " + endMonth.AddMonths(m).ToShortDateString());
+                    // Console.WriteLine(m + ":" + startMonth.AddMonths(m).ToShortDateString() + " -- " + endMonth.AddMonths(m).ToShortDateString());
                     months[m] = SumTransaktion(new DateTime(startMonth.AddMonths(m).Ticks), new DateTime(endMonth.AddMonths(m).Ticks), resenh);
                 }
-                
+
                 Dictionary<string, double> sumYTD = SumTransaktion(startYear, endYear, resenh);
                 Dictionary<string, double> sumLastYTD = SumTransaktion(startPreviousYear, endPreviousYear, resenh);
 
@@ -486,13 +464,13 @@ namespace EPPlusResultat
                 totalSheet.Cells["A5"].Value = "Konto";
                 totalSheet.Cells["B5"].Value = "Benämning";
                 for (int m = 0; m < 12; m++)
-                    totalSheet.Cells[alpha[m+3].ToString()+"5"].Value = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(startMonth.AddMonths(m).Month);
+                    totalSheet.Cells[alpha[m + 3].ToString() + "5"].Value = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(startMonth.AddMonths(m).Month);
                 totalSheet.Cells["O5"].Value = "Ack resultat";
                 totalSheet.Cells["P5"].Value = "Ack resultat fg år";
                 totalSheet.Cells["Q5"].Value = "Differens";
 
                 row++;
-                totalSheet.Cells["B"+row].Value = "Intäkter";
+                totalSheet.Cells["B" + row].Value = "Intäkter";
                 row++;
                 //3000-3999
                 int startrow = row;
@@ -512,18 +490,18 @@ namespace EPPlusResultat
                     int konto = s;
                     if (konto >= 3000 && konto <= 3999)
                     {
-                        totalSheet.Cells["A"+row].Value = konto;
-                        totalSheet.Cells["B"+row].Value = konton[s.ToString()];
+                        totalSheet.Cells["A" + row].Value = konto;
+                        totalSheet.Cells["B" + row].Value = konton[s.ToString()];
                         for (int m = 0; m < 12; m++)
                         {
                             if (months[m].ContainsKey(konto.ToString()))
-                                totalSheet.Cells[alpha[m+3].ToString()+row].Value = months[m][konto.ToString()];
+                                totalSheet.Cells[alpha[m + 3].ToString() + row].Value = months[m][konto.ToString()];
                             else
                                 totalSheet.Cells[alpha[m + 3].ToString() + row].Value = 0.0;
 
-                          
+
                         }
-                        
+
                         if (sumYTD.ContainsKey(konto.ToString()))
                             totalSheet.Cells["O" + row].Value = sumYTD[konto.ToString()];
                         else
@@ -539,21 +517,21 @@ namespace EPPlusResultat
                         row++;
                     }
                 }
-                
-                for(int r = startrow;r<= (row-1);r++)
+
+                for (int r = startrow; r <= (row - 1); r++)
                 {
                     totalSheet.Row(r).OutlineLevel = 1;
                     totalSheet.Row(r).Collapsed = true;
                 }
                 if (startrow == row)
                     row++;
-                totalSheet.Cells["B"+row].Value = "Summa intäkter";
-                for(int c = 3;c<18;c++)
+                totalSheet.Cells["B" + row].Value = "Summa intäkter";
+                for (int c = 3; c < 18; c++)
                 {
-                    totalSheet.Cells[alpha[c-1]+""+row].Formula = "SUM(" + alpha[c-1] + startrow + ":" + alpha[c-1] + (row - 1)+")";
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
 
                 }
-                
+
                 intaktsRad = row;
 
 
@@ -562,7 +540,7 @@ namespace EPPlusResultat
                 row++;
 
                 //4000-4999 Rörelsens kostnader
-                totalSheet.Cells["B"+row].Value = "Rörelsens kostnader";
+                totalSheet.Cells["B" + row].Value = "Rörelsens kostnader";
                 row++;
                 startrow = row;
                 foreach (string s in konton.Keys)
@@ -571,14 +549,14 @@ namespace EPPlusResultat
                     int konto = Int32.Parse(s);
                     if (konto >= 4000 && konto <= 4999)
                     {
-                        totalSheet.Cells["A"+row].Value = konto;
-                        totalSheet.Cells["B"+row].Value = konton[s.ToString()];
+                        totalSheet.Cells["A" + row].Value = konto;
+                        totalSheet.Cells["B" + row].Value = konton[s.ToString()];
                         for (int m = 0; m < 12; m++)
                         {
                             if (months[m].ContainsKey(konto.ToString()))
-                                totalSheet.Cells[alpha[m+3]+""+row].Value = months[m][konto.ToString()];
+                                totalSheet.Cells[alpha[m + 3] + "" + row].Value = months[m][konto.ToString()];
                             else
-                                totalSheet.Cells["C"+row].Value = 0.0;
+                                totalSheet.Cells["C" + row].Value = 0.0;
 
 
                         }
@@ -605,29 +583,29 @@ namespace EPPlusResultat
                 }
                 if (startrow == row)
                     row++;
-                totalSheet.Cells["B"+row].Value = "Summa rörelsens kostnader";
+                totalSheet.Cells["B" + row].Value = "Summa rörelsens kostnader";
                 for (int c = 3; c < 18; c++)
                 {
-                    totalSheet.Cells[alpha[c - 1] +""+row].Formula = "SUM(" + alpha[c-1] + startrow + ":" + alpha[c-1] + (row - 1)+")";
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
 
                 }
                 rorelseKostnadsRad = row;
                 row++;
                 row++;
                 bruttoRad = row;
-                totalSheet.Cells["B"+row].Value = "Bruttovinst";
+                totalSheet.Cells["B" + row].Value = "Bruttovinst";
                 for (int c = 3; c < 18; c++)
                 {
-                    totalSheet.Cells[alpha[c - 1] +""+row].Formula = "SUM(" + alpha[c - 1] + intaktsRad + "+" + alpha[c - 1] + rorelseKostnadsRad + ")";
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + intaktsRad + "+" + alpha[c - 1] + rorelseKostnadsRad + ")";
 
                 }
-                
+
                 row++;
                 row++;
 
 
                 //5000-6999 Externa kostnader
-                totalSheet.Cells["B"+row].Value = "Externa kostnader";
+                totalSheet.Cells["B" + row].Value = "Externa kostnader";
                 row++;
                 startrow = row;
                 foreach (string s in konton.Keys)
@@ -671,10 +649,10 @@ namespace EPPlusResultat
                 if (startrow == row)
                     row++;
                 kostnadsRader.Add(row);
-                totalSheet.Cells["B"+row].Value = "Summa externa kostnader";
+                totalSheet.Cells["B" + row].Value = "Summa externa kostnader";
                 for (int c = 3; c < 18; c++)
                 {
-                    totalSheet.Cells[alpha[c - 1] +""+row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
 
                 }
                 row++;
@@ -683,7 +661,7 @@ namespace EPPlusResultat
 
 
                 //7000-7799 Personalkostnader
-                totalSheet.Cells["B"+row].Value = "Personalkostnader";
+                totalSheet.Cells["B" + row].Value = "Personalkostnader";
                 row++;
                 startrow = row;
                 foreach (string s in konton.Keys)
@@ -727,7 +705,7 @@ namespace EPPlusResultat
                 if (startrow == row)
                     row++;
                 kostnadsRader.Add(row);
-                totalSheet.Cells["B"+row].Value = "Summa personalkostnader";
+                totalSheet.Cells["B" + row].Value = "Summa personalkostnader";
                 for (int c = 3; c < 18; c++)
                 {
                     totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
@@ -738,7 +716,7 @@ namespace EPPlusResultat
                 row++;
 
                 //7800-7999 Avskrivningar
-                totalSheet.Cells["B"+row].Value = "Avskrivningar";
+                totalSheet.Cells["B" + row].Value = "Avskrivningar";
                 row++;
                 startrow = row;
                 foreach (string s in konton.Keys)
@@ -782,7 +760,7 @@ namespace EPPlusResultat
                 if (startrow == row)
                     row++;
                 kostnadsRader.Add(row);
-                totalSheet.Cells["B"+row].Value = "Summa avskrivningar";
+                totalSheet.Cells["B" + row].Value = "Summa avskrivningar";
                 for (int c = 3; c < 18; c++)
                 {
                     totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
@@ -793,7 +771,7 @@ namespace EPPlusResultat
                 row++;
 
                 //8000-8799 Finansiella kostnader
-                totalSheet.Cells["B"+row].Value = "Finansiella kostnader";
+                totalSheet.Cells["B" + row].Value = "Finansiella kostnader";
                 row++;
                 startrow = row;
                 foreach (string s in konton.Keys)
@@ -837,7 +815,7 @@ namespace EPPlusResultat
                 if (startrow == row)
                     row++;
                 kostnadsRader.Add(row);
-                totalSheet.Cells["B"+row].Value = "Summa finansiella kostnader";
+                totalSheet.Cells["B" + row].Value = "Summa finansiella kostnader";
                 for (int c = 3; c < 18; c++)
                 {
                     totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
@@ -848,7 +826,7 @@ namespace EPPlusResultat
                 row++;
 
                 //8800-8999 Bokslutsdispositioner
-                totalSheet.Cells["B"+row].Value = "Bokslutsdispositioner";
+                totalSheet.Cells["B" + row].Value = "Bokslutsdispositioner";
                 row++;
                 startrow = row;
                 foreach (string s in konton.Keys)
@@ -892,7 +870,7 @@ namespace EPPlusResultat
                 if (startrow == row)
                     row++;
                 kostnadsRader.Add(row);
-                totalSheet.Cells["B"+row].Value = "Summa bokslutsdispositioner";
+                totalSheet.Cells["B" + row].Value = "Summa bokslutsdispositioner";
                 for (int c = 3; c < 18; c++)
                 {
                     totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + startrow + ":" + alpha[c - 1] + (row - 1) + ")";
@@ -900,28 +878,28 @@ namespace EPPlusResultat
                 }
                 row++;
                 row++;
-                
+
                 kostnadsRad = row;
-                totalSheet.Cells["B"+row].Value = "Summa kostnader";
-                 for (int c = 3; c<18; c++)
+                totalSheet.Cells["B" + row].Value = "Summa kostnader";
+                for (int c = 3; c < 18; c++)
                 {
-                    string summaKostnader = "SUM("+alpha[c-1];
+                    string summaKostnader = "SUM(" + alpha[c - 1];
                     foreach (int n in kostnadsRader)
                     {
-                        summaKostnader += n + "+"+alpha[c-1];
+                        summaKostnader += n + "+" + alpha[c - 1];
                     }
                     summaKostnader = summaKostnader.Substring(0, summaKostnader.Length - 2) + ")";
-                    totalSheet.Cells[alpha[c - 1] +""+row].Formula = summaKostnader;
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = summaKostnader;
 
                 }
 
 
                 row++;
                 row++;
-                totalSheet.Cells["B"+row].Value = "Resultat";
-                for (int c = 3; c<18; c++)
+                totalSheet.Cells["B" + row].Value = "Resultat";
+                for (int c = 3; c < 18; c++)
                 {
-                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c-1] + bruttoRad + "+" + alpha[c-1] + kostnadsRad+")";
+                    totalSheet.Cells[alpha[c - 1] + "" + row].Formula = "SUM(" + alpha[c - 1] + bruttoRad + "+" + alpha[c - 1] + kostnadsRad + ")";
 
                 }
                 for (int r = 3; r <= 14; r++)
@@ -930,10 +908,10 @@ namespace EPPlusResultat
                     totalSheet.Column(r).Collapsed = true;
                 }
                 totalSheet.Cells["C7:Z" + row].Style.Numberformat.Format = "#,### ;[Red]-#,### ";
-                totalSheet.Cells["A1:Z"+row].AutoFitColumns();
+                totalSheet.Cells["A1:Z" + row].AutoFitColumns();
                 totalSheet.View.FreezePanes(6, 2);
-                
-                
+
+
 
 
 
@@ -944,7 +922,6 @@ namespace EPPlusResultat
                 MessageBox.Show(ex.Message + Environment.NewLine + ex.StackTrace);
             }
         }
-
 
         private void Total(ExcelPackage wb, Objekt o)
         {
@@ -1503,18 +1480,17 @@ namespace EPPlusResultat
                 MessageBox.Show(ex.Message + Environment.NewLine + ex.StackTrace);
             }
         }
-    
 
         private static DateTime endOfMonth(DateTime datum)
         {
             int[] endDay;
             if (DateTime.IsLeapYear(datum.Year))
             {
-                endDay = new int[]{ 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+                endDay = new int[] { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
             }
             else
             {
-                 endDay = new int[]{ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+                endDay = new int[] { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
             }
             if (DateTime.TryParse(datum.Year + "-" + datum.Month + "-" + endDay[datum.Month - 1], out DateTime returnDate))
                 return returnDate;
@@ -1522,64 +1498,61 @@ namespace EPPlusResultat
                 return datum;
         }
 
-
-        
-
         private void SkapaResultatsida(ExcelPackage wb)
+        {
+            //För varje flik skapa en rad med 
+            //Kolumner Summa Intäkt, summa rörelsekostnader, bruttovinst, summa externa kostnader, Summa personalkostnader, summa finansiella kostnader, summa kostnader, Resultat
+            ExcelWorksheet overSheet = wb.Workbook.Worksheets.Add("Översikt");
+
+
+            overSheet.Cells["C1"].Value = "Summa Intäkter";
+            overSheet.Cells["D1"].Value = "Summa rörelsens kostnader";
+            overSheet.Cells["E1"].Value = "Bruttovinst";
+            overSheet.Cells["F1"].Value = "Summa externa kostnader";
+            overSheet.Cells["G1"].Value = "Summa personalkostnader";
+            overSheet.Cells["H1"].Value = "Summa avskrivningar";
+            overSheet.Cells["I1"].Value = "Summa finansiella kostnader";
+            overSheet.Cells["J1"].Value = "Summa bokslutsdispositioner";
+            overSheet.Cells["K1"].Value = "Summa kostnader";
+            overSheet.Cells["L1"].Value = "Resultat";
+
+            int i = 2;
+            foreach (string s in valda)
             {
-                //För varje flik skapa en rad med 
-                //Kolumner Summa Intäkt, summa rörelsekostnader, bruttovinst, summa externa kostnader, Summa personalkostnader, summa finansiella kostnader, summa kostnader, Resultat
-                ExcelWorksheet overSheet = wb.Workbook.Worksheets.Add("Översikt");
-               
+                overSheet.Cells["A" + i].Value = s;
 
-                overSheet.Cells["C1"].Value = "Summa Intäkter";
-                overSheet.Cells["D1"].Value = "Summa rörelsens kostnader";
-                overSheet.Cells["E1"].Value = "Bruttovinst";
-                overSheet.Cells["F1"].Value = "Summa externa kostnader";
-                overSheet.Cells["G1"].Value = "Summa personalkostnader";
-                overSheet.Cells["H1"].Value = "Summa avskrivningar";
-                overSheet.Cells["I1"].Value = "Summa finansiella kostnader";
-                overSheet.Cells["J1"].Value = "Summa bokslutsdispositioner";
-                overSheet.Cells["K1"].Value = "Summa kostnader";
-                overSheet.Cells["L1"].Value = "Resultat";
-
-                int i = 2;
-                foreach (string s in valda)
-                {
-                    overSheet.Cells["A"+i].Value = s;
-
-                    overSheet.Cells["C"+i].Formula = "VLOOKUP(C1,'" + s + "'!B:O,14,0)";
-                    overSheet.Cells["D"+i].Formula = "VLOOKUP(D1,'" + s + "'!B:O,14,0)";
-                    overSheet.Cells["E"+i].Formula = "VLOOKUP(E1,'" + s + "'!B:O,14,0)";
-                    overSheet.Cells["F"+i].Formula = "VLOOKUP(F1,'" + s + "'!B:O,14,0)";
-                    overSheet.Cells["G"+i].Formula = "VLOOKUP(G1,'" + s + "'!B:O,14,0)";
-                    overSheet.Cells["H"+i].Formula = "VLOOKUP(H1,'" + s + "'!B:O,14,0)";
-                    overSheet.Cells["I"+i].Formula = "VLOOKUP(I1,'" + s + "'!B:O,14,0)";
-                    overSheet.Cells["J"+i].Formula = "VLOOKUP(J1,'" + s + "'!B:O,14,0)";
-                    overSheet.Cells["K"+i].Formula = "VLOOKUP(K1,'" + s + "'!B:O,14,0)";
-                    overSheet.Cells["L"+i].Formula = "VLOOKUP(L1,'" + s + "'!B:O,14,0)";
-                    i++;
-                }
-                overSheet.Cells["A"+i].Value = "TOTAL";
-
-                overSheet.Cells[i, 3].Formula = "VLOOKUP(C1," + "TOTAL" + "!B:O,14,0)";
-                overSheet.Cells[i, 4].Formula = "VLOOKUP(D1," + "TOTAL" + "!B:O,14,0)";
-                overSheet.Cells[i, 5].Formula = "VLOOKUP(E1," + "TOTAL" + "!B:O,14,0)";
-                overSheet.Cells[i, 6].Formula = "VLOOKUP(F1," + "TOTAL" + "!B:O,14,0)";
-                overSheet.Cells[i, 7].Formula = "VLOOKUP(G1," + "TOTAL" + "!B:O,14,0)";
-                overSheet.Cells[i, 8].Formula = "VLOOKUP(H1," + "TOTAL" + "!B:O,14,0)";
-                overSheet.Cells[i, 9].Formula = "VLOOKUP(I1," + "TOTAL" + "!B:O,14,0)";
-                overSheet.Cells[i, 10].Formula = "VLOOKUP(J1," + "TOTAL" + "!B:O,14,0)";
-                overSheet.Cells[i, 11].Formula = "VLOOKUP(K1," + "TOTAL" + "!B:O,14,0)";
-                overSheet.Cells[i, 12].Formula = "VLOOKUP(L1," + "TOTAL" + "!B:O,14,0)";
-
-                overSheet.Cells["C2:L" + i].Style.Numberformat.Format = "#,### ;[Red]-#,### ";
-                overSheet.Cells["A1:L" + i].AutoFitColumns();
-
+                overSheet.Cells["C" + i].Formula = "VLOOKUP(C1,'" + s + "'!B:O,14,0)";
+                overSheet.Cells["D" + i].Formula = "VLOOKUP(D1,'" + s + "'!B:O,14,0)";
+                overSheet.Cells["E" + i].Formula = "VLOOKUP(E1,'" + s + "'!B:O,14,0)";
+                overSheet.Cells["F" + i].Formula = "VLOOKUP(F1,'" + s + "'!B:O,14,0)";
+                overSheet.Cells["G" + i].Formula = "VLOOKUP(G1,'" + s + "'!B:O,14,0)";
+                overSheet.Cells["H" + i].Formula = "VLOOKUP(H1,'" + s + "'!B:O,14,0)";
+                overSheet.Cells["I" + i].Formula = "VLOOKUP(I1,'" + s + "'!B:O,14,0)";
+                overSheet.Cells["J" + i].Formula = "VLOOKUP(J1,'" + s + "'!B:O,14,0)";
+                overSheet.Cells["K" + i].Formula = "VLOOKUP(K1,'" + s + "'!B:O,14,0)";
+                overSheet.Cells["L" + i].Formula = "VLOOKUP(L1,'" + s + "'!B:O,14,0)";
+                i++;
             }
+            overSheet.Cells["A" + i].Value = "TOTAL";
 
-            private Dictionary<string, double> SumTransaktion(DateTime from, DateTime to)
-            {
+            overSheet.Cells[i, 3].Formula = "VLOOKUP(C1," + "TOTAL" + "!B:O,14,0)";
+            overSheet.Cells[i, 4].Formula = "VLOOKUP(D1," + "TOTAL" + "!B:O,14,0)";
+            overSheet.Cells[i, 5].Formula = "VLOOKUP(E1," + "TOTAL" + "!B:O,14,0)";
+            overSheet.Cells[i, 6].Formula = "VLOOKUP(F1," + "TOTAL" + "!B:O,14,0)";
+            overSheet.Cells[i, 7].Formula = "VLOOKUP(G1," + "TOTAL" + "!B:O,14,0)";
+            overSheet.Cells[i, 8].Formula = "VLOOKUP(H1," + "TOTAL" + "!B:O,14,0)";
+            overSheet.Cells[i, 9].Formula = "VLOOKUP(I1," + "TOTAL" + "!B:O,14,0)";
+            overSheet.Cells[i, 10].Formula = "VLOOKUP(J1," + "TOTAL" + "!B:O,14,0)";
+            overSheet.Cells[i, 11].Formula = "VLOOKUP(K1," + "TOTAL" + "!B:O,14,0)";
+            overSheet.Cells[i, 12].Formula = "VLOOKUP(L1," + "TOTAL" + "!B:O,14,0)";
+
+            overSheet.Cells["C2:L" + i].Style.Numberformat.Format = "#,### ;[Red]-#,### ";
+            overSheet.Cells["A1:L" + i].AutoFitColumns();
+
+        }
+
+        private Dictionary<string, double> SumTransaktion(DateTime from, DateTime to, string resenh)
+        {
             Dictionary<string, double> sum = new Dictionary<string, double>();
 
             foreach (Transaktion t in transaktioner)
@@ -1588,29 +1561,9 @@ namespace EPPlusResultat
 
                 if (!sum.ContainsKey(t.Kontonr))
                     sum.Add(t.Kontonr, 0.0); //Add to dictionary if not already in it
-                if (t.Transaktionsdatum >= from & t.Transaktionsdatum <= to)
-                    sum[t.Kontonr] += t.Belopp; // Add t.Belopp to Sum if resenh == t.Id
-
-
-            }
-
-
-            return sum;
-        }
-
-        private Dictionary<string,double> SumTransaktion(DateTime from, DateTime to, string resenh)
-        {
-            Dictionary<string, double> sum = new Dictionary<string, double>();
-
-            foreach(Transaktion t in transaktioner)
-            {
-                
-
-                if (!sum.ContainsKey(t.Kontonr))
-                    sum.Add(t.Kontonr, 0.0); //Add to dictionary if not already in it
-                if (t.Objekt.ContainsKey(selectedType) )
-                    if(t.Objekt[selectedType].Equals(resenh) || resenh.Equals("*") )
-                        if(t.Transaktionsdatum >= from & t.Transaktionsdatum <= to)
+                if (t.Objekt.ContainsKey(selectedType))
+                    if (t.Objekt[selectedType].Equals(resenh) || resenh.Equals("*"))
+                        if (t.Transaktionsdatum >= from & t.Transaktionsdatum <= to)
                             sum[t.Kontonr] += t.Belopp; // Add t.Belopp to Sum if resenh == t.Id
 
 
@@ -1623,9 +1576,9 @@ namespace EPPlusResultat
         private void button4_Click(object sender, EventArgs e)
         {
             valda.Clear();
-            foreach(object o in checkedListBox1.CheckedItems)
+            foreach (object o in checkedListBox1.CheckedItems)
             {
-                
+
                 valda.Add(o.ToString());
             }
             button2.Enabled = true;
@@ -1683,7 +1636,7 @@ namespace EPPlusResultat
                 }
                 // MessageBox.Show("Rader: " + list.Count);
                 button3.Enabled = true;
-                this.Update();
+                Update();
                 openFileDialog1.Dispose();
             }
             catch (Exception ex)
