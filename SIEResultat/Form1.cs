@@ -77,7 +77,7 @@ namespace EPPlusResultat
                 }
                 else
                 {
-                    throw new Exception("Fel vid filinläsning");
+                    throw new IOException("Fel vid filinläsning");
                 }
                 // MessageBox.Show("Rader: " + list.Count);
                 button6.Enabled = true;
