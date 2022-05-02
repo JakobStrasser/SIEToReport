@@ -32,5 +32,7 @@ namespace EPPlusResultat
             this.kvantitet = kvantitet;
             this.sign = sign;
         }
+
+
     }
 }

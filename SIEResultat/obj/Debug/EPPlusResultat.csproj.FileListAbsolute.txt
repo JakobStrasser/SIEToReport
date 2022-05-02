@@ -1,0 +1,15 @@
+C:\Users\Jakob\Documents\OC projekt\EPPlus Resultat\SIEResultat\obj\Debug\EPPlusResultat.csprojAssemblyReference.cache
+C:\Users\Jakob\Documents\OC projekt\EPPlus Resultat\SIEResultat\obj\Debug\EPPlusResultat.csproj.ResolveComReference.cache
+C:\Users\Jakob\Documents\OC projekt\EPPlus Resultat\SIEResultat\obj\Debug\EPPlusResultat.Form1.resources
+C:\Users\Jakob\Documents\OC projekt\EPPlus Resultat\SIEResultat\obj\Debug\EPPlusResultat.Properties.Resources.resources
+C:\Users\Jakob\Documents\OC projekt\EPPlus Resultat\SIEResultat\obj\Debug\EPPlusResultat.csproj.GenerateResource.cache
+C:\Users\Jakob\Documents\OC projekt\EPPlus Resultat\SIEResultat\bin\Debug\EPPlusResultat.exe.config
+C:\Users\Jakob\Documents\OC projekt\EPPlus Resultat\SIEResultat\bin\Debug\EPPlusResultat.exe
+C:\Users\Jakob\Documents\OC projekt\EPPlus Resultat\SIEResultat\bin\Debug\EPPlusResultat.pdb
+C:\Users\Jakob\Documents\OC projekt\EPPlus Resultat\SIEResultat\bin\Debug\EPPlus.dll
+C:\Users\Jakob\Documents\OC projekt\EPPlus Resultat\SIEResultat\bin\Debug\Newtonsoft.Json.dll
+C:\Users\Jakob\Documents\OC projekt\EPPlus Resultat\SIEResultat\bin\Debug\EPPlus.xml
+C:\Users\Jakob\Documents\OC projekt\EPPlus Resultat\SIEResultat\bin\Debug\Newtonsoft.Json.xml
+C:\Users\Jakob\Documents\OC projekt\EPPlus Resultat\SIEResultat\obj\Debug\EPPlusResultat.csproj.CopyComplete
+C:\Users\Jakob\Documents\OC projekt\EPPlus Resultat\SIEResultat\obj\Debug\EPPlusResultat.exe
+C:\Users\Jakob\Documents\OC projekt\EPPlus Resultat\SIEResultat\obj\Debug\EPPlusResultat.pdb

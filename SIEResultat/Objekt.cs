@@ -2,8 +2,7 @@
 
 namespace EPPlusResultat
 {
-    public class Objekt : IEquatable<Objekt>
-    {
+    public class Objekt : IEquatable<Objekt> { 
         private string typ;
         private string id;
         private string namn;
