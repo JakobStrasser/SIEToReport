@@ -1,2 +1,4 @@
 ﻿*.SE
-bin/
+bin
+obj
+packages
